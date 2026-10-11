@@ -1,0 +1,9 @@
+faster-whisper>=1.1
+sounddevice
+numpy
+pynput>=1.8
+pyperclip
+PySide6>=6.6        # avec QtWebEngine : l'interface du canard
+uiautomation
+# Carte NVIDIA (facultatif : sans elle, l'appli marche sur le processeur)
+nvidia-cublas-cu12

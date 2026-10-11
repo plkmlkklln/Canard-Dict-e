@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="commun.css">
+<style>
+html, body { background: transparent; overflow: hidden; height: 100%; }
+/* Couleurs qui suivent le costume du canard (réglées par barre.js) */
+:root { --acc:#FFD23F; --bar-bg:#2a2a2c; --bar-border:rgba(255,255,255,.08); --bar-shadow:0 14px 40px rgba(0,0,0,.45);
+        --panneau-bg:#262628; --joues:.85; --tete-z:auto; --icone-barre:#c9c9ce; }
+@keyframes menuIn{0%{opacity:0;transform:translateX(-50%) translateY(18px) scale(.86)}60%{opacity:1;transform:translateX(-50%) translateY(-4px) scale(1.02)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+@keyframes menuOut{0%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(12px) scale(.92)}}
+@keyframes barIn{0%{opacity:0;transform:translateY(46px) scale(.85)}65%{opacity:1;transform:translateY(-5px) scale(1.03)}100%{opacity:1;transform:none}}
+#scene { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: 250px; display: flex; flex-direction: column; align-items: center; }
+.carte { position:absolute; bottom:calc(100% + 52px); left:50%; transform:translateX(-50%); transform-origin:50% 100%; max-width:calc(100vw - 32px); overflow-y:auto; overflow-x:hidden; background:var(--panneau-bg); border:1px solid var(--bar-border); border-radius:18px; box-shadow:0 18px 50px rgba(0,0,0,.5); box-sizing:border-box; display:grid; align-content:start; }
+.carte.entree { animation:menuIn .38s cubic-bezier(.2,.9,.3,1.2) both; }
+.carte.entree.apres { animation-delay:.12s; }
+.carte.sortie { animation:menuOut .17s ease-in both; pointer-events:none; }
+.ligne { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; }
+.ligne:hover, .bloc:hover { background:rgba(255,255,255,.04); }
+.bloc { display:grid; gap:4px; padding:10px 12px; border-radius:10px; }
+.ligne .ico, .bloc .ico { font-size:21px; color:#c9c9ce; }
+.titre { flex:1; font-size:15px; font-weight:600; }
+.expl { font-size:13px; line-height:1.45; color:#a3a3a9; padding-left:33px; }
+.sep { height:1px; background:rgba(255,255,255,.07); margin:2px 8px; }
+.nav { width:100%; border:none; color:inherit; text-align:left; display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; cursor:pointer; background:transparent; }
+.nav:hover { background:rgba(255,255,255,.04); }
+.bloc-nav.ouvert .nav { background:rgba(255,255,255,.06); }
+.nav { transition:background .2s; }
+.nav .val { font-size:13px; color:#8d8d93; white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
+.nav .chev { font-size:20px; color:#8d8d93; transition:transform .2s; }
+.bloc-nav.ouvert .chev { transform:rotate(90deg); }
+.enveloppe { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows .26s cubic-bezier(.2,.8,.3,1), opacity .2s; }
+.enveloppe > div { overflow:hidden; min-height:0; }
+.bloc-nav.ouvert .enveloppe { grid-template-rows:1fr; opacity:1; }
+.sous { margin:2px 4px 4px 33px; background:#2f2f32; border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:4px; display:grid; gap:2px; }
+.choix { width:100%; border:none; color:inherit; background:transparent; text-align:left; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:9px; cursor:pointer; font-size:14px; font-weight:600; }
+.choix:hover { background:rgba(255,255,255,.05); }
+.choix .point { flex:none; width:8px; height:8px; border-radius:50%; background:var(--acc); opacity:0; transform:scale(.3); transition:opacity .15s, transform .2s cubic-bezier(.2,.9,.3,1.4); }
+.choix { transition:background .15s; }
+.choix.actif .point { opacity:1; transform:none; }
+.choix .lib { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bulle { position:absolute; bottom:calc(100% + 34px); left:50%; transform:translateX(-50%); font-weight:800; font-size:14px; padding:7px 14px; border-radius:999px; white-space:nowrap; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+.bouton-barre { transition:background .2s, color .2s; width:44px; height:44px; border-radius:14px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; background:transparent; color:var(--icone-barre); }
+.bouton-barre:hover { filter:brightness(1.15); }
+.bouton-barre.actif { background:var(--acc); color:#1d1d1f; }
+.bouton-barre .ico { font-size:23px; }
+.etape { display:flex; align-items:flex-start; gap:12px; font-size:15px; font-weight:600; line-height:1.6; }
+.rond { flex:none; width:24px; height:24px; border-radius:50%; background:#FFD23F; color:#1d1d1f; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.encart { background:#2f2f32; border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:6px; }
+.info { display:flex; gap:12px; font-size:14px; line-height:1.45; color:#c9c9ce; }
+.cos { display: contents; }
+/* « Skin du canard » : grille de petites têtes */
+.sous.grille { grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px; margin-left:4px; max-height:196px; overflow-y:auto; }
+.choix.visage { gap:6px; padding:5px 6px; font-size:12px; border-radius:8px; border:1px solid transparent; min-width:0; }
+.choix.visage .lib { min-width:0; }
+.choix.visage.actif { background:rgba(255,255,255,.09); border-color:var(--acc); }
+</style>
+</head>
+<body>
+<div id="scene">
+
+  <!-- ===================== Paramètres ===================== -->
+  <div id="panneau" class="carte cache" style="width:340px;padding:8px;gap:2px">
+    <div style="display:grid;gap:6px;padding:12px 12px 14px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="ico" style="font-size:21px;color:#FFD23F">keyboard_voice</span>
+        <div style="flex:1;font-size:15px;font-weight:700">Lanceur de saisie vocale</div>
+        <button class="inter" data-cle="lanceur"><span></span></button>
+      </div>
+      <div class="expl">La barre s'affiche toute seule quand tu cliques dans une zone de texte.</div>
+    </div>
+    <div class="sep"></div>
+    <div class="ligne"><span class="ico">format_quote</span><div class="titre">Ponctuation automatique</div><button class="inter" data-cle="ponctuation"><span></span></button></div>
+    <div class="ligne"><span class="ico">shield</span><div class="titre">Filtrer le langage inadapté</div><button class="inter" data-cle="filtre"><span></span></button></div>
+    <div class="ligne"><span class="ico">volume_up</span><div class="titre">Sons de début et de fin</div><button class="inter" data-cle="sons"><span></span></button></div>
+    <div class="sep"></div>
+    <div class="bloc">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="ico">keyboard</span>
+        <div class="titre" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="touche">Win + H</span>ouvre cette dictée</div>
+        <button class="inter" data-cle="win_h"><span></span></button>
+      </div>
+      <div class="expl">Remplace la saisie vocale de Windows. La barre écoute tout de suite.</div>
+    </div>
+    <div class="bloc">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="ico">visibility_off</span>
+        <div class="titre">Cacher la barre quand c'est fini</div>
+        <button class="inter" data-cle="cacher"><span></span></button>
+      </div>
+      <div class="expl">La barre apparaît quand tu parles, puis s'en va.</div>
+    </div>
+    <div class="bloc">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="ico">pets</span>
+        <div class="titre">Costumes du canard</div>
+        <button class="inter" data-cle="costumes"><span></span></button>
+      </div>
+      <div class="expl">Le canard se déguise selon les mots que tu dis.</div>
+    </div>
+    <div class="sep"></div>
+    <div id="navs"></div>
+    <button id="mes-mots" class="bloc" style="border:none;color:inherit;background:transparent;text-align:left;cursor:pointer;width:100%">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="ico">menu_book</span>
+        <div class="titre">Mes mots à retenir</div>
+        <span class="ico" style="font-size:20px;color:#8d8d93">open_in_new</span>
+      </div>
+      <div class="expl">Prénoms, villes, mots rares : écris-les une fois, le canard les reconnaîtra mieux.</div>
+    </button>
+    <div class="sep"></div>
+    <div class="ligne"><span class="ico">power_settings_new</span><div class="titre">Lancer au démarrage de Windows</div><button class="inter" data-cle="demarrage"><span></span></button></div>
+    <div class="sep"></div>
+    <button id="quitter" class="ligne" style="border:none;color:#c9c9ce;background:transparent;text-align:left;cursor:pointer">
+      <span class="ico" style="font-size:21px;color:inherit">logout</span>
+      <div class="titre">Quitter la dictée</div>
+    </button>
+  </div>
+
+  <!-- ===================== Aide ===================== -->
+  <div id="aide" class="carte cache" style="width:360px;padding:20px;gap:16px">
+    <div style="font-size:19px;font-weight:800">Comment ça marche ?</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="etape"><span class="rond">1</span><span>Clique dans une zone de texte.</span></div>
+      <div class="etape"><span class="rond">2</span><span>Maintiens <span class="touche nom-touche" style="font-size:13px;padding:1px 8px;line-height:1.4">Ctrl droit</span> et parle.</span></div>
+      <div class="etape"><span class="rond">3</span><span>Relâche : le texte s'écrit.</span></div>
+    </div>
+    <div class="encart">
+      <div style="font-size:14px;font-weight:800">Long texte ?</div>
+      <div style="font-size:14px;line-height:1.5;color:#c9c9ce">Appuie <strong style="color:#fff">une fois</strong> sur <span class="touche nom-touche">Ctrl droit</span>, parle autant que tu veux, puis appuie encore pour finir.</div>
+    </div>
+    <div class="encart" id="aide-winh">
+      <div style="font-size:14px;font-weight:800">Encore plus simple</div>
+      <div style="font-size:14px;line-height:1.5;color:#c9c9ce"><span class="touche">Win + H</span> : le canard écoute tout de suite. Arrête de parler : c'est écrit.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:8px">
+      <div class="encart" style="gap:8px">
+        <div style="font-size:14px;font-weight:800">Annuler</div>
+        <div><span class="touche" style="font-size:13px;padding:1px 8px;line-height:1.4">Échap</span></div>
+      </div>
+      <div class="encart">
+        <div style="font-size:14px;font-weight:800">Sons</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#c9c9ce"><span class="ico" style="font-size:18px;color:#FFD23F">trending_up</span>j'écoute</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#c9c9ce"><span class="ico" style="font-size:18px;color:#FFD23F">trending_down</span>c'est fini</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="info"><span class="ico" style="font-size:20px;color:#8d8d93">format_quote</span><span>La ponctuation se met toute seule : pas besoin de dire « virgule » ou « point ».</span></div>
+      <div class="info"><span class="ico" style="font-size:20px;color:#8d8d93">wifi_off</span><span>Tout se passe sur ton PC. Pas besoin d'Internet.</span></div>
+    </div>
+    <button id="compris" style="align-self:stretch;border:none;background:#FFD23F;color:#1d1d1f;font-size:15px;font-weight:800;padding:12px;border-radius:12px;cursor:pointer">J'ai compris</button>
+  </div>
+
+  <!-- ===================== Bulles ===================== -->
+  <div id="bulle-reflexion" class="cache">
+    <div class="bulle" style="background:#ececee;color:#1d1d1f;padding:8px 14px;display:flex;align-items:center;gap:10px">
+      <div style="display:flex;gap:4px;align-items:center;height:12px">
+        <span class="pt" style="width:6px;height:6px;border-radius:50%;background:#1d1d1f"></span>
+        <span class="pt" style="width:6px;height:6px;border-radius:50%;background:#1d1d1f"></span>
+        <span class="pt" style="width:6px;height:6px;border-radius:50%;background:#1d1d1f"></span>
+      </div>
+      Je réfléchis
+    </div>
+    <div style="position:absolute;bottom:calc(100% + 24px);left:calc(50% + 10px);width:9px;height:9px;border-radius:50%;background:#ececee"></div>
+    <div style="position:absolute;bottom:calc(100% + 15px);left:calc(50% + 16px);width:5px;height:5px;border-radius:50%;background:#ececee"></div>
+  </div>
+  <div id="bulle-pleurs" class="bulle cache" style="background:#8FD3FF;color:#10283a">Snif… à bientôt</div>
+  <div id="bulle" class="bulle cache" style="background:#FFD23F;color:#1d1d1f"></div>
+
+  <!-- ===================== La barre ===================== -->
+  <div id="barre" style="animation:barIn .5s cubic-bezier(.2,.9,.3,1.2) both;position:relative;width:250px;height:72px;transition:background .5s,border-color .5s,box-shadow .5s;background:var(--bar-bg);border:1px solid var(--bar-border);border-radius:22px;box-shadow:var(--bar-shadow);display:flex;align-items:center;justify-content:space-between;padding:0 16px;box-sizing:border-box">
+    <button id="engrenage" class="bouton-barre" title="Paramètres"><span class="ico">settings</span></button>
+
+      <button id="canard-bouton" title="Parler" style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:84px;height:92px;border:none;background:transparent;padding:0;cursor:pointer">
+        <div id="ring1" style="position:absolute;left:2px;top:12px;width:80px;height:80px;border-radius:50%;border:2px solid var(--acc);opacity:0;box-sizing:border-box"></div>
+        <div id="ring2" style="position:absolute;left:2px;top:12px;width:80px;height:80px;border-radius:50%;border:2px solid var(--acc);opacity:0;box-sizing:border-box"></div>
+        <div id="z1" style="position:absolute;left:58px;top:2px;font-size:13px;font-weight:800;color:#b9c3ff;opacity:0;pointer-events:none">z</div>
+        <div id="z2" style="position:absolute;left:58px;top:2px;font-size:16px;font-weight:800;color:#b9c3ff;opacity:0;pointer-events:none">z</div>
+        <div id="z3" style="position:absolute;left:58px;top:2px;font-size:20px;font-weight:800;color:#b9c3ff;opacity:0;pointer-events:none">Z</div>
+        <div style="position:absolute;left:20px;top:82px;width:44px;height:7px;border-radius:50%;background:rgba(0,0,0,.4)"></div>
+        <div id="duck" style="position:absolute;left:0;top:6px;width:84px;height:84px;transform-origin:50% 100%">
+          <div id="body" style="position:absolute;left:12px;top:40px;width:60px;height:38px;border-radius:50%;background:#FFD23F;box-shadow:inset -6px -7px 12px rgba(140,70,0,.28), inset 6px 5px 10px rgba(255,255,255,.3)"></div>
+          <div id="belly" style="position:absolute;left:26px;top:54px;width:32px;height:20px;border-radius:50%;background:#FFE68A"></div>
+          <div class="cos" data-cos="cuir">
+            <div style="position:absolute;z-index:3;left:22px;top:42px;width:40px;height:8px;border-radius:4px;background:#151515;display:flex;justify-content:space-around;align-items:center"><span style="width:3.5px;height:3.5px;border-radius:50%;background:#d9d9de"></span><span style="width:3.5px;height:3.5px;border-radius:50%;background:#d9d9de"></span><span style="width:3.5px;height:3.5px;border-radius:50%;background:#d9d9de"></span><span style="width:3.5px;height:3.5px;border-radius:50%;background:#d9d9de"></span></div>
+            <div style="position:absolute;z-index:3;left:38.5px;top:48px;width:7px;height:7px;border-radius:50%;border:1.5px solid #d9d9de;box-sizing:border-box"></div>
+            <div data-crop="1" style="position:absolute;z-index:3;left:66px;top:24px;width:10px;height:54px;transform:rotate(22deg);transform-origin:50% 100%">
+              <div style="position:absolute;left:4px;top:20px;width:2px;height:19px;background:#2b2b30;box-shadow:0 0 0 1px rgba(255,255,255,.4)"></div>
+              <div data-crop="2" style="position:absolute;left:5px;top:21px;width:0;height:0;transform-origin:0 0">
+                <div style="position:absolute;left:-1px;top:-16px;width:2px;height:17px;border-radius:1px;background:#2b2b30;box-shadow:0 0 0 1px rgba(255,255,255,.4)"></div>
+                <div style="position:absolute;left:-3.5px;top:-21px;width:7px;height:6px;border-radius:2px;background:#2b2b30;box-shadow:0 0 0 1px rgba(255,255,255,.55), inset 1px 1px 0 rgba(255,255,255,.2)"></div>
+              </div>
+              <div style="position:absolute;left:2.5px;top:38px;width:5px;height:14px;border-radius:2px;background:#2a2a2a"></div>
+              <div style="position:absolute;left:2.5px;top:38px;width:5px;height:3px;background:#C8102E"></div>
+            </div>
+          </div>
+          <div class="cos" data-cos="citrouille">
+            <div style="position:absolute;z-index:3;left:20px;top:41px;width:44px;height:12px;clip-path:polygon(0 0,100% 0,88% 100%,76% 40%,64% 100%,50% 40%,36% 100%,24% 40%,12% 100%);background:#1c1028"></div>
+            <div data-sway="1" style="position:absolute;z-index:4;left:64px;top:56px;width:18px;height:20px;transform-origin:50% 0">
+              <div style="position:absolute;left:3px;top:0;width:12px;height:7px;border:2px solid #555;border-bottom:none;border-radius:8px 8px 0 0;box-sizing:border-box"></div>
+              <div style="position:absolute;left:0;top:5px;width:18px;height:14px;border-radius:40% 40% 50% 50%;background:radial-gradient(ellipse at 40% 30%,#FFB35A,#E8701A)"></div>
+              <div style="position:absolute;left:4px;top:9px;width:3px;height:3px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#2a1608"></div>
+              <div style="position:absolute;left:11px;top:9px;width:3px;height:3px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#2a1608"></div>
+              <div style="position:absolute;left:5px;top:14px;width:8px;height:2px;border-radius:0 0 3px 3px;background:#2a1608"></div>
+              <div style="position:absolute;left:4px;top:2px;width:4px;height:4px;border-radius:50%;background:#E5484D"></div>
+              <div style="position:absolute;left:10px;top:1px;width:4px;height:4px;border-radius:50%;background:#7C5CFF"></div>
+            </div>
+          </div>
+          <div class="cos" data-cos="fantome">
+            <div style="position:absolute;z-index:3;left:8px;top:38px;width:68px;height:46px;border-radius:45% 45% 0 0;clip-path:polygon(0 0,100% 0,100% 84%,88% 100%,76% 84%,63% 100%,50% 84%,37% 100%,24% 84%,12% 100%,0 84%);background:radial-gradient(ellipse at 40% 25%,#ffffff,#EEF0F8 60%,#D4D8E8)"></div>
+            <div data-flapL="1" style="position:absolute;z-index:3;left:2px;top:50px;width:14px;height:10px;border-radius:60% 20% 50% 60%;background:#EEF0F8;transform-origin:100% 50%"></div>
+            <div data-flapR="1" style="position:absolute;z-index:3;left:68px;top:50px;width:14px;height:10px;border-radius:20% 60% 60% 50%;background:#EEF0F8;transform-origin:0 50%"></div>
+          </div>
+          <div class="cos" data-cos="sorciere">
+            <div style="position:absolute;z-index:3;left:20px;top:41px;width:44px;height:9px;border-radius:40% 40% 50% 50%;background:#24163a"></div>
+            <div style="position:absolute;z-index:3;left:39px;top:46px;width:6px;height:6px;border-radius:50%;background:#6EDC7A;box-shadow:0 0 6px #6EDC7A"></div>
+            <div data-sway="1" style="position:absolute;z-index:4;left:70px;top:22px;width:16px;height:60px;transform-origin:50% 20%">
+              <div style="position:absolute;left:6px;top:0;width:3px;height:44px;border-radius:2px;background:linear-gradient(90deg,#6a4424,#8A5A32)"></div>
+              <div style="position:absolute;left:3px;top:40px;width:9px;height:3px;background:#5E3820"></div>
+              <div style="position:absolute;left:0;top:42px;width:15px;height:17px;clip-path:polygon(30% 0,70% 0,100% 100%,0 100%);background:repeating-linear-gradient(90deg,#D9A520 0 1.5px,#B8861A 1.5px 3px)"></div>
+            </div>
+            <div data-float="1" style="position:absolute;z-index:4;left:4px;top:18px;font-size:9px;font-weight:800;color:#A47CFF">✦</div>
+            <div data-float="1" style="position:absolute;z-index:4;left:64px;top:10px;font-size:8px;font-weight:800;color:#6EDC7A">✦</div>
+          </div>
+          <div class="cos" data-cos="fierte">
+            <div style="position:absolute;z-index:3;left:21px;top:41px;width:42px;height:9px;border-radius:5px;background:linear-gradient(180deg,#e40303 0 16.6%,#ff8c00 16.6% 33.3%,#ffed00 33.3% 50%,#008026 50% 66.6%,#004dff 66.6% 83.3%,#750787 83.3%)"></div>
+            <div style="position:absolute;z-index:3;left:24px;top:47px;width:9px;height:18px;border-radius:2px 2px 4px 4px;background:linear-gradient(90deg,#e40303 0 16.6%,#ff8c00 16.6% 33.3%,#ffed00 33.3% 50%,#008026 50% 66.6%,#004dff 66.6% 83.3%,#750787 83.3%);transform:rotate(12deg)"></div>
+            <div style="position:absolute;z-index:3;left:72px;top:18px;width:2px;height:48px;border-radius:1px;background:#d9d9de"></div>
+            <div data-flag="1" style="position:absolute;z-index:3;left:74px;top:18px;width:22px;height:14px;transform-origin:0 50%;border-radius:0 2px 2px 0;background:linear-gradient(180deg,#e40303 0 16.6%,#ff8c00 16.6% 33.3%,#ffed00 33.3% 50%,#008026 50% 66.6%,#004dff 66.6% 83.3%,#750787 83.3%)"></div>
+            <div data-float="1" style="position:absolute;z-index:4;left:4px;top:18px;font-size:9px;font-weight:800;color:#ffed00">✦</div>
+            <div data-float="1" style="position:absolute;z-index:4;left:66px;top:36px;font-size:8px;font-weight:800;color:#ff4fa0">♥</div>
+            <div data-float="1" style="position:absolute;z-index:4;left:10px;top:34px;font-size:7px;font-weight:800;color:#4fa3ff">✦</div>
+          </div>
+          <div class="cos" data-cos="manga">
+            <div data-fly="0" style="position:absolute;z-index:4;left:0;top:0;width:4px;height:4px;border-radius:50%;background:#fff6a8;box-shadow:0 0 6px 2px rgba(255,240,140,.8)"></div>
+            <div data-fly="1" style="position:absolute;z-index:4;left:0;top:0;width:3px;height:3px;border-radius:50%;background:#fff6a8;box-shadow:0 0 5px 2px rgba(255,240,140,.7)"></div>
+            <div data-fly="2" style="position:absolute;z-index:4;left:0;top:0;width:3px;height:3px;border-radius:50%;background:#fff6a8;box-shadow:0 0 5px 2px rgba(255,240,140,.7)"></div>
+            <div style="position:absolute;z-index:3;left:10px;top:40px;width:64px;height:40px;border-radius:50% 50% 46% 46%;background:radial-gradient(ellipse at 40% 30%,#9EA4AA,#787E84 60%,#5C6268)"></div>
+            <div style="position:absolute;z-index:3;left:22px;top:48px;width:40px;height:28px;border-radius:50%;background:radial-gradient(ellipse at 50% 35%,#F6EAC8,#E8D5A4 70%,#D8C08A)"></div>
+            <div style="position:absolute;z-index:3;left:30px;top:54px;width:7px;height:5px;border-radius:70% 10% 70% 10%;background:#7FA65A;transform:rotate(-20deg)"></div>
+            <div style="position:absolute;z-index:3;left:45px;top:57px;width:7px;height:5px;border-radius:10% 70% 10% 70%;background:#7FA65A;transform:rotate(20deg)"></div>
+            <div style="position:absolute;z-index:3;left:37px;top:65px;width:7px;height:5px;border-radius:70% 10% 70% 10%;background:#7FA65A;transform:rotate(-8deg)"></div>
+            <div style="position:absolute;z-index:3;left:14px;top:72px;width:18px;height:10px;border-radius:50%;background:#5C6268"></div>
+            <div style="position:absolute;z-index:3;left:52px;top:72px;width:18px;height:10px;border-radius:50%;background:#5C6268"></div>
+            <div style="position:absolute;z-index:3;left:6px;top:52px;width:10px;height:16px;border-radius:50%;background:#787E84;transform:rotate(14deg)"></div>
+            <div style="position:absolute;z-index:3;left:68px;top:52px;width:10px;height:16px;border-radius:50%;background:#787E84;transform:rotate(-14deg)"></div>
+            <div data-shroom="0" style="position:absolute;z-index:4;left:-8px;top:66px;width:14px;height:16px;transform-origin:50% 100%">
+              <div style="position:absolute;left:4.5px;top:7px;width:5px;height:9px;border-radius:2px 2px 3px 3px;background:#F4EEDC"></div>
+              <div style="position:absolute;left:0;top:0;width:14px;height:9px;border-radius:50% 50% 20% 20% / 90% 90% 10% 10%;background:radial-gradient(circle at 40% 30%,#ff7a6a,#D9483B)"></div>
+              <div style="position:absolute;left:3px;top:2px;width:2.5px;height:2.5px;border-radius:50%;background:#fff"></div>
+              <div style="position:absolute;left:8px;top:3px;width:2px;height:2px;border-radius:50%;background:#fff"></div>
+              <div style="position:absolute;left:5px;top:10px;width:1.2px;height:1.2px;border-radius:50%;background:#3a2a1a"></div>
+              <div style="position:absolute;left:8px;top:10px;width:1.2px;height:1.2px;border-radius:50%;background:#3a2a1a"></div>
+            </div>
+          </div>
+          <div class="cos" data-cos="zzOldManga">
+            <div data-burst="1" style="position:absolute;z-index:0;left:-18px;top:-26px;width:120px;height:120px;border-radius:50%;background:repeating-conic-gradient(rgba(255,255,255,.16) 0 4deg,transparent 4deg 14deg);-webkit-mask:radial-gradient(circle,transparent 28%,#000 34%,transparent 70%);mask:radial-gradient(circle,transparent 28%,#000 34%,transparent 70%)"></div>
+            <div style="position:absolute;z-index:3;left:12px;top:42px;width:60px;height:36px;border-radius:45% 45% 40% 40%;background:linear-gradient(180deg,#4B36B0,#2E2178)"></div>
+            <div style="position:absolute;z-index:3;left:20px;top:42px;width:44px;height:9px;clip-path:polygon(0 0,100% 0,80% 100%,50% 60%,20% 100%);background:#C9D2DE"></div>
+            <div style="position:absolute;z-index:3;left:24px;top:50px;width:17px;height:9px;border-radius:0 0 50% 50%;border-bottom:2px solid #1c1450;box-sizing:border-box;background:linear-gradient(180deg,#5a44c8,#4B36B0)"></div>
+            <div style="position:absolute;z-index:3;left:43px;top:50px;width:17px;height:9px;border-radius:0 0 50% 50%;border-bottom:2px solid #1c1450;box-sizing:border-box;background:linear-gradient(180deg,#5a44c8,#4B36B0)"></div>
+            <div style="position:absolute;z-index:3;left:34px;top:60px;width:16px;height:12px;display:grid;grid-template-columns:1fr 1fr;gap:1.5px">
+              <span style="border-radius:2px;background:#5a44c8;box-shadow:inset 0 -1px 0 #1c1450"></span><span style="border-radius:2px;background:#5a44c8;box-shadow:inset 0 -1px 0 #1c1450"></span>
+              <span style="border-radius:2px;background:#5a44c8;box-shadow:inset 0 -1px 0 #1c1450"></span><span style="border-radius:2px;background:#5a44c8;box-shadow:inset 0 -1px 0 #1c1450"></span>
+            </div>
+            <div style="position:absolute;z-index:3;left:37px;top:48px;width:10px;height:12px;clip-path:polygon(60% 0,10% 55%,45% 55%,30% 100%,90% 40%,55% 40%);background:#2EE6C5"></div>
+            <div style="position:absolute;z-index:3;left:14px;top:72px;width:56px;height:5px;border-radius:2px;background:linear-gradient(180deg,#e6ebf2,#9aa6b6)"></div>
+            <div style="position:absolute;z-index:3;left:38px;top:70.5px;width:8px;height:8px;background:#F5C542;clip-path:polygon(50% 0,62% 36%,100% 38%,70% 60%,80% 100%,50% 76%,20% 100%,30% 60%,0 38%,38% 36%)"></div>
+            <div data-flex="0" style="position:absolute;z-index:4;left:-4px;top:22px;width:22px;height:34px;transform-origin:90% 85%">
+              <div style="position:absolute;left:6px;top:20px;width:16px;height:11px;border-radius:6px;background:linear-gradient(180deg,#4B36B0,#2E2178)"></div>
+              <div data-bicep="1" style="position:absolute;left:7px;top:15px;width:12px;height:10px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a54d8,#4B36B0)"></div>
+              <div style="position:absolute;left:2px;top:6px;width:9px;height:18px;border-radius:5px;background:linear-gradient(90deg,#3B2A8F,#4B36B0)"></div>
+              <div style="position:absolute;left:1px;top:4px;width:11px;height:4px;border-radius:2px;background:#2EE6C5"></div>
+              <div style="position:absolute;left:0;top:-5px;width:13px;height:11px;border-radius:5px;background:linear-gradient(160deg,#e6ebf2,#9aa6b6);box-shadow:inset -2px -2px 0 rgba(0,0,0,.15)"></div>
+            </div>
+            <div data-flex="1" style="position:absolute;z-index:4;left:66px;top:22px;width:22px;height:34px;transform-origin:10% 85%">
+              <div style="position:absolute;left:0;top:20px;width:16px;height:11px;border-radius:6px;background:linear-gradient(180deg,#4B36B0,#2E2178)"></div>
+              <div data-bicep="1" style="position:absolute;left:3px;top:15px;width:12px;height:10px;border-radius:50%;background:radial-gradient(circle at 60% 35%,#6a54d8,#4B36B0)"></div>
+              <div style="position:absolute;left:11px;top:6px;width:9px;height:18px;border-radius:5px;background:linear-gradient(270deg,#3B2A8F,#4B36B0)"></div>
+              <div style="position:absolute;left:10px;top:4px;width:11px;height:4px;border-radius:2px;background:#2EE6C5"></div>
+              <div style="position:absolute;left:9px;top:-5px;width:13px;height:11px;border-radius:5px;background:linear-gradient(200deg,#e6ebf2,#9aa6b6);box-shadow:inset 2px -2px 0 rgba(0,0,0,.15)"></div>
+            </div>
+            <div style="position:absolute;z-index:3;left:24px;top:76px;width:14px;height:6px;border-radius:2px 2px 3px 3px;background:linear-gradient(180deg,#e6ebf2,#9aa6b6)"></div>
+            <div style="position:absolute;z-index:3;left:46px;top:76px;width:14px;height:6px;border-radius:2px 2px 3px 3px;background:linear-gradient(180deg,#e6ebf2,#9aa6b6)"></div>
+            <div data-float="1" style="position:absolute;z-index:4;left:70px;top:14px;font-size:11px;font-weight:800;color:#fff">✧</div>
+            <div data-float="1" style="position:absolute;z-index:4;left:4px;top:20px;font-size:9px;font-weight:800;color:#7cc4ff">✧</div>
+            <div data-sweat="1" style="position:absolute;z-index:4;left:64px;top:6px;width:6px;height:9px;border-radius:50% 50% 50% 50% / 30% 30% 70% 70%;background:linear-gradient(180deg,#e6f6ff,#8fd3ff);opacity:0"></div>
+          </div>
+          <div class="cos" data-cos="furry">
+            <div data-tail="1" style="position:absolute;z-index:0;left:58px;top:40px;width:34px;height:26px;transform-origin:4px 75%">
+              <div style="position:absolute;left:0;top:4px;width:34px;height:20px;border-radius:40% 70% 60% 40% / 50% 60% 40% 50%;background:linear-gradient(100deg,#B5501A 0%,#F08A3E 50%,#FFB070 70%)"></div>
+              <div style="position:absolute;left:20px;top:2px;width:16px;height:18px;border-radius:40% 60% 55% 45%;background:radial-gradient(circle at 60% 40%,#ffffff,#FFF1E2 70%)"></div>
+              <div style="position:absolute;left:6px;top:8px;width:20px;height:12px;border-radius:50%;background:repeating-linear-gradient(80deg,transparent 0 4px,rgba(120,50,10,.2) 4px 5px)"></div>
+            </div>
+            <div style="position:absolute;z-index:2;left:12px;top:40px;width:60px;height:38px;border-radius:50%;background:repeating-linear-gradient(105deg,transparent 0 5px,rgba(160,70,20,.16) 5px 6px);-webkit-mask:radial-gradient(ellipse at 50% 55%,transparent 35%,#000 70%);mask:radial-gradient(ellipse at 50% 55%,transparent 35%,#000 70%)"></div>
+            <div style="position:absolute;z-index:3;left:24px;top:44px;width:36px;height:24px;border-radius:30% 30% 50% 50%;clip-path:polygon(0 0,100% 0,96% 40%,88% 62%,82% 52%,74% 82%,64% 64%,56% 96%,48% 70%,40% 94%,32% 66%,24% 84%,16% 54%,10% 64%,4% 40%);background:radial-gradient(ellipse at 50% 20%,#ffffff,#FFF1E2 65%,#F6DEC8)"></div>
+            <div style="position:absolute;z-index:3;left:23px;top:41px;width:38px;height:9px;clip-path:polygon(0 0,100% 0,50% 100%);background:linear-gradient(180deg,#3CC3B4,#2a9c90)"></div>
+            <div style="position:absolute;z-index:3;left:26px;top:41px;width:32px;height:3px;background:repeating-linear-gradient(90deg,#fff 0 1.5px,transparent 1.5px 5px);opacity:.6"></div>
+            <div style="position:absolute;z-index:3;left:39px;top:47px;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF2A8,#F2C230 60%,#B08410);box-shadow:0 1px 1px rgba(0,0,0,.3)"><div style="position:absolute;left:2.5px;top:3.5px;width:1px;height:2px;background:#6a4a08"></div></div>
+            <div style="position:absolute;z-index:3;left:6px;top:55px;width:15px;height:5px;clip-path:polygon(0 100%,10% 0,25% 70%,40% 0,55% 70%,70% 0,85% 70%,100% 0,100% 100%);background:#FFF5EA"></div>
+            <div style="position:absolute;z-index:3;left:63px;top:55px;width:15px;height:5px;clip-path:polygon(0 100%,10% 0,25% 70%,40% 0,55% 70%,70% 0,85% 70%,100% 0,100% 100%);background:#FFF5EA"></div>
+            <div data-float="1" style="position:absolute;z-index:4;left:70px;top:16px;font-size:10px;font-weight:800;color:#FFB7C5">✦</div>
+            <div data-float="1" style="position:absolute;z-index:4;left:4px;top:22px;font-size:8px;font-weight:800;color:#fff">✦</div>
+            <div data-float="1" style="position:absolute;z-index:4;left:74px;top:34px;font-size:7px;font-weight:800;color:#FF8FA3">♥</div>
+            <div style="position:absolute;z-index:3;left:7px;top:57px;width:13px;height:12px;border-radius:50%;background:linear-gradient(160deg,#F08A3E,#C85A1E)">
+              <div style="position:absolute;left:4px;top:5px;width:5px;height:4px;border-radius:50%;background:#FFB7C5"></div>
+              <div style="position:absolute;left:1.5px;top:2px;width:2.5px;height:2.5px;border-radius:50%;background:#FFB7C5"></div>
+              <div style="position:absolute;left:5.3px;top:1px;width:2.5px;height:2.5px;border-radius:50%;background:#FFB7C5"></div>
+              <div style="position:absolute;left:9px;top:2px;width:2.5px;height:2.5px;border-radius:50%;background:#FFB7C5"></div>
+            </div>
+            <div style="position:absolute;z-index:3;left:64px;top:57px;width:13px;height:12px;border-radius:50%;background:linear-gradient(200deg,#F08A3E,#C85A1E)">
+              <div style="position:absolute;left:4px;top:5px;width:5px;height:4px;border-radius:50%;background:#FFB7C5"></div>
+              <div style="position:absolute;left:1.5px;top:2px;width:2.5px;height:2.5px;border-radius:50%;background:#FFB7C5"></div>
+              <div style="position:absolute;left:5.3px;top:1px;width:2.5px;height:2.5px;border-radius:50%;background:#FFB7C5"></div>
+              <div style="position:absolute;left:9px;top:2px;width:2.5px;height:2.5px;border-radius:50%;background:#FFB7C5"></div>
+            </div>
+          </div>
+          <div class="cos" data-cos="brique">
+            <div data-brick="0" style="position:absolute;z-index:3;left:22px;top:75px;width:16px;height:6px;border-radius:2px;background:linear-gradient(180deg,#FF9A2E,#E5730A)"></div>
+            <div data-brick="1" style="position:absolute;z-index:3;left:46px;top:75px;width:16px;height:6px;border-radius:2px;background:linear-gradient(180deg,#FF9A2E,#E5730A)"></div>
+            <div data-brick="2" style="position:absolute;z-index:3;left:12px;top:44px;width:60px;height:32px;border-radius:4px;background:linear-gradient(170deg,#ff4a4a 0%,#D9141B 55%,#A00a10 100%);box-shadow:inset -3px -4px 0 rgba(0,0,0,.2), inset 3px 3px 0 rgba(255,255,255,.35)">
+              <div style="position:absolute;left:4px;top:-5px;width:12px;height:6px;border-radius:2px 2px 0 0;background:linear-gradient(90deg,#A00a10,#ff4a4a 45%,#A00a10)"></div>
+              <div style="position:absolute;left:44px;top:-5px;width:12px;height:6px;border-radius:2px 2px 0 0;background:linear-gradient(90deg,#A00a10,#ff4a4a 45%,#A00a10)"></div>
+              <div style="position:absolute;left:6px;top:4px;width:18px;height:4px;border-radius:2px;background:rgba(255,255,255,.4)"></div>
+              <div style="position:absolute;left:0;top:15px;width:60px;height:1px;background:rgba(0,0,0,.18)"></div>
+            </div>
+            <div data-brick="3" style="position:absolute;z-index:3;left:4px;top:50px;width:12px;height:16px;border-radius:3px 2px 2px 3px;background:linear-gradient(170deg,#ff4a4a,#A00a10);clip-path:polygon(0 30%,100% 0,100% 100%,0 100%)"></div>
+            <div data-brick="3" style="position:absolute;z-index:3;left:68px;top:50px;width:12px;height:16px;border-radius:2px 3px 3px 2px;background:linear-gradient(190deg,#ff4a4a,#A00a10);clip-path:polygon(0 0,100% 30%,100% 100%,0 100%)"></div>
+          </div>
+          <div class="cos" data-cos="armure">
+            <div data-flame="0" style="position:absolute;z-index:0;left:26px;top:76px;width:10px;height:14px;border-radius:50% 50% 50% 50% / 30% 30% 70% 70%;background:linear-gradient(180deg,#e8fbff,#4fdcff 45%,rgba(79,140,255,0));transform-origin:50% 0"></div>
+            <div data-flame="1" style="position:absolute;z-index:0;left:48px;top:76px;width:10px;height:14px;border-radius:50% 50% 50% 50% / 30% 30% 70% 70%;background:linear-gradient(180deg,#e8fbff,#4fdcff 45%,rgba(79,140,255,0));transform-origin:50% 0"></div>
+            <div style="position:absolute;z-index:3;left:24px;top:71px;width:14px;height:7px;border-radius:3px 3px 5px 5px;background:linear-gradient(180deg,#d42a2a,#7a0c12)"></div>
+            <div style="position:absolute;z-index:3;left:46px;top:71px;width:14px;height:7px;border-radius:3px 3px 5px 5px;background:linear-gradient(180deg,#d42a2a,#7a0c12)"></div>
+            <div style="position:absolute;z-index:3;left:24px;top:46px;width:36px;height:10px;border-radius:50% 50% 30% 30%;background:linear-gradient(180deg,#FFE08A,#C9962A);box-shadow:inset 0 -1.5px 0 rgba(120,70,0,.3)"></div>
+            <div style="position:absolute;z-index:3;left:17px;top:58px;width:8px;height:12px;border-radius:40% 20% 30% 50%;background:linear-gradient(180deg,#FFE08A,#C9962A)"></div>
+            <div style="position:absolute;z-index:3;left:59px;top:58px;width:8px;height:12px;border-radius:20% 40% 50% 30%;background:linear-gradient(180deg,#FFE08A,#C9962A)"></div>
+            <div style="position:absolute;z-index:3;left:40px;top:56px;width:4px;height:18px;background:#7a0c12"></div>
+            <div data-core="1" style="position:absolute;z-index:3;left:35px;top:52px;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,#ffffff 0,#bff6ff 30%,#4fdcff 60%,#1f6f9a 100%);box-shadow:0 0 10px #4fdcff, 0 0 0 2px #7a5410"></div>
+          </div>
+          <div class="cos" data-cos="goth">
+            <div style="position:absolute;z-index:3;left:24px;top:43px;width:36px;height:5px;border-radius:2px;background:#0d0b10;box-shadow:0 0 0 1px #3a2a48"></div>
+            <div style="position:absolute;z-index:3;left:28px;top:44px;width:28px;height:3px;display:flex;justify-content:space-between">
+              <span style="width:3px;height:3px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#c9c9d6;transform:translateY(-2px)"></span>
+              <span style="width:3px;height:3px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#c9c9d6;transform:translateY(-2px)"></span>
+              <span style="width:3px;height:3px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#c9c9d6;transform:translateY(-2px)"></span>
+              <span style="width:3px;height:3px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#c9c9d6;transform:translateY(-2px)"></span>
+              <span style="width:3px;height:3px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#c9c9d6;transform:translateY(-2px)"></span>
+            </div>
+            <div style="position:absolute;z-index:3;left:39.5px;top:47px;width:5px;height:5px;border-radius:50%;border:1.5px solid #c9c9d6;box-sizing:border-box"></div>
+            <div style="position:absolute;z-index:3;left:22px;top:60px;width:40px;height:16px;border-radius:0 0 50% 50%;background:repeating-radial-gradient(circle at 50% 0,rgba(150,110,190,.25) 0 1px,transparent 1px 4px)"></div>
+            <div data-bat="0" style="position:absolute;z-index:4;left:36px;top:14px;width:14px;height:7px;clip-path:polygon(0 30%,28% 0,42% 40%,50% 20%,58% 40%,72% 0,100% 30%,72% 62%,50% 100%,28% 62%);background:#1a1420"></div>
+            <div data-bat="1" style="position:absolute;z-index:4;left:36px;top:14px;width:11px;height:6px;clip-path:polygon(0 30%,28% 0,42% 40%,50% 20%,58% 40%,72% 0,100% 30%,72% 62%,50% 100%,28% 62%);background:#2a2034"></div>
+          </div>
+          <div class="cos" data-cos="president">
+            <div style="position:absolute;z-index:3;left:30px;top:44px;width:24px;height:26px;clip-path:polygon(0 0,100% 0,50% 100%);background:#f6f6f4"></div>
+            <div style="position:absolute;z-index:3;left:26px;top:44px;width:10px;height:24px;clip-path:polygon(0 0,100% 0,100% 100%);background:#16203a"></div>
+            <div style="position:absolute;z-index:3;left:48px;top:44px;width:10px;height:24px;clip-path:polygon(0 0,100% 0,0 100%);background:#16203a"></div>
+            <div style="position:absolute;z-index:3;left:38.5px;top:45px;width:7px;height:5px;border-radius:2px;background:#a50d26"></div>
+            <div style="position:absolute;z-index:3;left:38px;top:49px;width:8px;height:30px;clip-path:polygon(15% 0,85% 0,100% 88%,50% 100%,0 88%);background:linear-gradient(180deg,#d81834,#b30f28)"></div>
+            <div style="position:absolute;z-index:3;left:24px;top:53px;width:5px;height:4px;border-radius:1px;background:repeating-linear-gradient(180deg,#C8102E 0 1px,#fff 1px 2px);box-shadow:-1.5px -1px 0 0 #2a4aa8"></div>
+          </div>
+          <div class="cos" data-cos="pixel">
+            <div style="position:absolute;z-index:3;left:14px;top:44px;width:56px;height:32px;border-radius:2px;background-color:#F2C230;background-image:linear-gradient(90deg,rgba(0,0,0,.07) 50%,transparent 50%),linear-gradient(rgba(255,255,255,.08) 50%,transparent 50%);background-size:14px 16px;box-shadow:inset -5px -5px 0 rgba(150,90,0,.25)"></div>
+            <div style="position:absolute;z-index:3;left:8px;top:50px;width:9px;height:16px;background:#D9A520;box-shadow:inset -2px -2px 0 rgba(120,70,0,.3)"></div>
+            <div style="position:absolute;z-index:3;left:67px;top:50px;width:9px;height:16px;background:#D9A520;box-shadow:inset -2px -2px 0 rgba(120,70,0,.3)"></div>
+            <div style="position:absolute;z-index:3;left:26px;top:76px;width:11px;height:5px;background:#F08A1C"></div>
+            <div style="position:absolute;z-index:3;left:47px;top:76px;width:11px;height:5px;background:#F08A1C"></div>
+          </div>
+          <div class="cos" data-cos="cartoon">
+            <div style="position:absolute;z-index:1;left:14px;top:68px;width:56px;height:12px;border-radius:0 0 40% 40%;background:#4a2f22"></div>
+            <div style="position:absolute;z-index:1;left:12px;top:77px;width:60px;height:4px;border-radius:2px;background:#1b1b1d"></div>
+            <div style="position:absolute;z-index:3;left:41.5px;top:48px;width:1px;height:28px;background:#1b1b1d"></div>
+            <div style="position:absolute;z-index:3;left:44px;top:53px;width:3px;height:3px;border-radius:50%;background:#1b1b1d"></div>
+            <div style="position:absolute;z-index:3;left:44px;top:60px;width:3px;height:3px;border-radius:50%;background:#1b1b1d"></div>
+            <div style="position:absolute;z-index:3;left:44px;top:67px;width:3px;height:3px;border-radius:50%;background:#1b1b1d"></div>
+            <div style="position:absolute;z-index:3;left:8px;top:54px;width:11px;height:10px;border-radius:50% 40% 50% 50%;background:#F2D06B;box-shadow:0 0 0 1px #1b1b1d"></div>
+            <div style="position:absolute;z-index:3;left:66px;top:56px;width:11px;height:9px;border-radius:40% 50% 50% 50%;background:#F2D06B;box-shadow:0 0 0 1px #1b1b1d"></div>
+          </div>
+          <div class="cos" data-cos="flocage">
+            <div style="position:absolute;z-index:3;left:35px;top:52px;width:14px;height:10px;clip-path:polygon(0 0,100% 0,50% 100%);background:#4fc3ff"></div>
+            <div style="position:absolute;z-index:3;left:38px;top:53px;width:8px;height:5px;clip-path:polygon(0 0,100% 0,50% 100%);background:#c9f4ff"></div>
+            <div style="position:absolute;z-index:3;left:-2px;top:42px;width:20px;height:26px">
+              <div style="position:absolute;left:6px;top:0;width:10px;height:11px;border-radius:3px 3px 4px 4px;background:linear-gradient(90deg,#8a63ff,#5a35d6);box-shadow:0 0 0 1.5px #fff"></div>
+              <div style="position:absolute;left:9px;top:10px;width:4px;height:4px;background:#3a3a55"></div>
+              <div style="position:absolute;left:0;top:13px;width:18px;height:5px;border-radius:2px;background:#2b2b44;box-shadow:0 0 0 1.5px #fff"></div>
+              <div style="position:absolute;left:11px;top:16px;width:5px;height:9px;border-radius:2px;background:#1e1640;box-shadow:0 0 0 1.5px #fff"></div>
+            </div>
+            <div data-spray="1" style="position:absolute;z-index:3;left:-3px;top:55px;width:5px;height:5px;border-radius:50%;background:#4fc3ff"></div>
+            <div data-spray="1" style="position:absolute;z-index:3;left:-3px;top:55px;width:6px;height:6px;border-radius:50%;background:#9b5cff"></div>
+            <div data-spray="1" style="position:absolute;z-index:3;left:-3px;top:55px;width:4px;height:4px;border-radius:50%;background:#7fdcff"></div>
+            <div data-spray="1" style="position:absolute;z-index:3;left:-3px;top:55px;width:5px;height:5px;border-radius:50%;background:#b18cff"></div>
+          </div>
+          <div class="cos" data-cos="sport">
+            <div data-bounce="1" style="position:absolute;z-index:3;left:64px;top:62px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:inset -2px -2px 0 #ddd"><div style="position:absolute;left:4.5px;top:4.5px;width:5px;height:5px;border-radius:50%;background:#1b1b1d"></div></div>
+          </div>
+          <div class="cos" data-cos="musique">
+            <div data-float="1" style="position:absolute;z-index:3;left:68px;top:14px;font-size:14px;font-weight:800;color:#7C5CFF">♪</div>
+            <div data-float="1" style="position:absolute;z-index:3;left:6px;top:20px;font-size:12px;font-weight:800;color:#FFD23F">♫</div>
+          </div>
+          <div class="cos" data-cos="pluie">
+            <div style="position:absolute;z-index:3;left:24px;top:-24px;width:38px;height:14px;border-radius:10px;background:#8d98a8"></div>
+            <div style="position:absolute;z-index:3;left:30px;top:-32px;width:17px;height:17px;border-radius:50%;background:#8d98a8"></div>
+            <div style="position:absolute;z-index:3;left:42px;top:-29px;width:12px;height:12px;border-radius:50%;background:#8d98a8"></div>
+            <div data-rain="1" style="position:absolute;z-index:2;left:30px;top:-10px;width:2px;height:6px;border-radius:1px;background:#8FD3FF"></div>
+            <div data-rain="1" style="position:absolute;z-index:2;left:42px;top:-10px;width:2px;height:6px;border-radius:1px;background:#8FD3FF"></div>
+            <div data-rain="1" style="position:absolute;z-index:2;left:54px;top:-10px;width:2px;height:6px;border-radius:1px;background:#8FD3FF"></div>
+          </div>
+          <div class="cos" data-cos="detective">
+            <div style="position:absolute;z-index:3;left:76px;top:46px;width:4px;height:15px;border-radius:2px;background:#5C4630;transform:rotate(-38deg)"></div>
+            <div style="position:absolute;z-index:3;left:62px;top:32px;width:17px;height:17px;border-radius:50%;border:3px solid #5C4630;background:rgba(180,220,255,.35);box-sizing:border-box"></div>
+          </div>
+          <div class="cos" data-cos="frog">
+            <div data-frog="fly" style="position:absolute;z-index:4;left:0;top:0;width:4px;height:4px;border-radius:50%;background:#1b1b1d"><div style="position:absolute;left:-2px;top:-3px;width:4px;height:3px;border-radius:50%;background:rgba(255,255,255,.7)"></div><div style="position:absolute;left:2px;top:-3px;width:4px;height:3px;border-radius:50%;background:rgba(255,255,255,.7)"></div></div>
+          </div>
+          <div class="cos" data-cos="riche">
+            <div style="position:absolute;z-index:3;left:27px;top:44px;width:30px;height:13px;border:2.5px solid #F5C542;border-top:none;border-radius:0 0 16px 16px;box-sizing:border-box"></div>
+            <div style="position:absolute;z-index:3;left:37.5px;top:53px;width:9px;height:9px;border-radius:50%;background:#F5C542;box-shadow:inset -1px -1px 0 #C99A1C"></div>
+          </div>
+          <div class="cos" data-cos="cafe">
+            <div style="position:absolute;z-index:3;left:13px;top:51px;width:13px;height:21px;border-radius:65% 25% 25% 65%;background:#ECE2CE;box-shadow:inset -2px 0 0 #d8c9ad"></div>
+            <div style="position:absolute;z-index:3;left:20px;top:39px;width:44px;height:14px;border-radius:50%;background:#2e2c2e"></div>
+            <div style="position:absolute;z-index:3;left:29px;top:44px;width:26px;height:30px;clip-path:polygon(0 0,100% 0,64% 100%,36% 100%);background:#505052"></div>
+            <div style="position:absolute;z-index:3;left:28px;top:44px;width:6px;height:29px;border-radius:3px;background:#2e2c2e;transform:rotate(-16deg);transform-origin:50% 0">
+              <div style="position:absolute;left:2.2px;top:3px;width:1.4px;height:22px;background:repeating-linear-gradient(180deg,#e8e2d6 0 1.3px,transparent 1.3px 3px)"></div>
+            </div>
+            <div style="position:absolute;z-index:3;left:50px;top:44px;width:6px;height:29px;border-radius:3px;background:#2e2c2e;transform:rotate(16deg);transform-origin:50% 0">
+              <div style="position:absolute;left:2.2px;top:3px;width:1.4px;height:22px;background:repeating-linear-gradient(180deg,#e8e2d6 0 1.3px,transparent 1.3px 3px)"></div>
+            </div>
+            <div style="position:absolute;z-index:3;left:35px;top:50px;width:1.5px;height:15px;background:#1b1b1d"><div style="position:absolute;left:-0.75px;bottom:-3px;width:3px;height:4px;border-radius:1px;background:#1b1b1d"></div></div>
+            <div style="position:absolute;z-index:3;left:48px;top:50px;width:1.5px;height:13px;background:#1b1b1d"><div style="position:absolute;left:-0.75px;bottom:-3px;width:3px;height:4px;border-radius:1px;background:#1b1b1d"></div></div>
+            <div style="position:absolute;z-index:3;left:41.3px;top:72px;width:1.6px;height:6px;background:#2a2a2c"></div>
+            <div style="position:absolute;z-index:3;left:63px;top:50px;width:15px;height:15px;border-radius:0 0 6px 6px;background:#fff;box-shadow:inset 0 3px 0 #6B3E26"></div>
+            <div style="position:absolute;z-index:3;left:74px;top:53px;width:7px;height:7px;border-radius:50%;border:2px solid #fff;box-sizing:border-box"></div>
+          </div>
+          <div class="cos" data-cos="amour">
+            <div style="position:absolute;z-index:3;left:68px;top:8px;width:9px;height:9px;background:#FF5C8A;transform:rotate(45deg);border-radius:5px 5px 0 5px"></div>
+            <div style="position:absolute;z-index:3;left:6px;top:16px;width:7px;height:7px;background:#FF5C8A;transform:rotate(45deg);border-radius:4px 4px 0 4px"></div>
+            <div style="position:absolute;z-index:3;left:72px;top:28px;width:6px;height:6px;background:#FF8FA3;transform:rotate(45deg);border-radius:3px 3px 0 3px"></div>
+          </div>
+          <div class="cos" data-cos="anniv">
+            <div style="position:absolute;left:4px;top:18px;width:5px;height:5px;border-radius:50%;background:#7C5CFF"></div>
+            <div style="position:absolute;left:74px;top:12px;width:5px;height:5px;border-radius:50%;background:#FF5C8A"></div>
+            <div style="position:absolute;left:70px;top:36px;width:4px;height:4px;border-radius:50%;background:#3DD68C"></div>
+            <div style="position:absolute;left:10px;top:38px;width:4px;height:4px;border-radius:50%;background:#FFD23F"></div>
+          </div>
+          <div class="cos" data-cos="italie">
+            <div style="position:absolute;z-index:3;left:60px;top:40px;width:22px;height:28px;transform:rotate(-18deg)">
+              <div style="position:absolute;left:0;top:4px;width:22px;height:24px;background:#F6C445;clip-path:polygon(0 0,100% 0,50% 100%)"></div>
+              <div style="position:absolute;left:4px;top:7px;width:5px;height:5px;border-radius:50%;background:#C0392B"></div>
+              <div style="position:absolute;left:12px;top:7px;width:5px;height:5px;border-radius:50%;background:#C0392B"></div>
+              <div style="position:absolute;left:8.5px;top:14px;width:4.5px;height:4.5px;border-radius:50%;background:#C0392B"></div>
+              <div style="position:absolute;left:-1px;top:0;width:24px;height:6px;border-radius:3px;background:#C98A3E"></div>
+            </div>
+          </div>
+          <div class="cos" data-cos="france">
+            <div style="position:absolute;z-index:3;left:64px;top:30px;width:9px;height:50px;border-radius:5px;background:#D9A45B;transform:rotate(24deg);display:grid;align-content:space-evenly;justify-items:center"><span style="width:6px;height:2px;border-radius:1px;background:#F2D29A"></span><span style="width:6px;height:2px;border-radius:1px;background:#F2D29A"></span><span style="width:6px;height:2px;border-radius:1px;background:#F2D29A"></span></div>
+          </div>
+          <div id="head" style="position:absolute;left:18px;top:2px;width:48px;height:46px;transform-origin:50% 90%;z-index:var(--tete-z)">
+            <div id="headBall" style="position:absolute;inset:0;border-radius:50%;background:#FFD23F;box-shadow:inset -5px -6px 10px rgba(140,70,0,.28), inset 5px 5px 9px rgba(255,255,255,.35)"></div>
+            <div id="face" style="position:absolute;inset:0">
+            <div class="cos" data-cos="cuir">
+              <div style="position:absolute;left:2px;top:11px;width:44px;height:20px;border-radius:10px;background:#141414"></div>
+            </div>
+            <div id="eyeL" style="position:absolute;left:8px;top:13px;width:14px;height:16px;border-radius:50%;background:#fff;overflow:hidden">
+              <div id="pupilL" style="position:absolute;left:3px;top:3.5px;width:8px;height:9px;border-radius:50%;background:#1b1b1d"><div style="position:absolute;left:1.5px;top:1.5px;width:3px;height:3px;border-radius:50%;background:#fff"></div><div style="position:absolute;left:5px;top:5.5px;width:1.5px;height:1.5px;border-radius:50%;background:#fff"></div></div>
+            </div>
+            <div id="eyeR" style="position:absolute;left:26px;top:13px;width:14px;height:16px;border-radius:50%;background:#fff;overflow:hidden">
+              <div id="pupilR" style="position:absolute;left:3px;top:3.5px;width:8px;height:9px;border-radius:50%;background:#1b1b1d"><div style="position:absolute;left:1.5px;top:1.5px;width:3px;height:3px;border-radius:50%;background:#fff"></div><div style="position:absolute;left:5px;top:5.5px;width:1.5px;height:1.5px;border-radius:50%;background:#fff"></div></div>
+            </div>
+            <div style="position:absolute;left:2px;top:28px;width:9px;height:6px;border-radius:50%;background:#FF8FA3;opacity:var(--joues)"></div>
+            <div style="position:absolute;left:37px;top:28px;width:9px;height:6px;border-radius:50%;background:#FF8FA3;opacity:var(--joues)"></div>
+            <div id="lidL" style="position:absolute;left:9px;top:18px;width:12px;height:7px;border-bottom:2.5px solid #4a2a10;border-radius:0 0 8px 8px;box-sizing:border-box;opacity:0"></div>
+            <div id="lidR" style="position:absolute;left:27px;top:18px;width:12px;height:7px;border-bottom:2.5px solid #4a2a10;border-radius:0 0 8px 8px;box-sizing:border-box;opacity:0"></div>
+            <div id="snot" style="position:absolute;z-index:2;left:33px;top:28px;width:10px;height:10px;border-radius:50%;background:rgba(175,225,255,.45);border:1px solid rgba(255,255,255,.8);box-sizing:border-box;transform-origin:0 0;opacity:0"><div style="position:absolute;left:2px;top:1.5px;width:3px;height:2px;border-radius:50%;background:#fff"></div></div>
+            <div id="tearL" style="position:absolute;left:11px;top:26px;width:6px;height:8px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:#8FD3FF;opacity:0"></div>
+            <div id="tearR" style="position:absolute;left:31px;top:26px;width:6px;height:8px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:#8FD3FF;opacity:0"></div>
+            <div id="mouth" style="position:absolute;left:18px;top:31px;width:12px;height:2px;border-radius:0 0 6px 6px;background:#5a1d10"></div>
+            <div id="beakLow" style="position:absolute;left:16.5px;top:31px;width:15px;height:7px;border-radius:0 0 8px 8px;background:#F07510"></div>
+            <div style="position:absolute;left:13.5px;top:25.5px;width:21px;height:9.5px;border-radius:50% 50% 45% 45%;background:#FF8A1A"></div>
+            </div>
+            <div class="cos" data-cos="citrouille">
+              <div style="position:absolute;z-index:3;left:-4px;top:0;width:56px;height:46px;border-radius:50% / 55%;background:radial-gradient(ellipse at 38% 30%,#FFB35A,#F07E1E 55%,#B5500F)"></div>
+              <div style="position:absolute;z-index:3;left:11px;top:1px;width:26px;height:44px;border-radius:50%;border-left:2px solid rgba(140,55,0,.35);border-right:2px solid rgba(140,55,0,.35);box-sizing:border-box"></div>
+              <div style="position:absolute;z-index:3;left:20px;top:2px;width:8px;height:42px;border-radius:50%;border-left:1.5px solid rgba(140,55,0,.25);border-right:1.5px solid rgba(140,55,0,.25);box-sizing:border-box"></div>
+              <div style="position:absolute;z-index:3;left:21px;top:-7px;width:6px;height:10px;border-radius:2px 2px 1px 1px;background:linear-gradient(90deg,#3E6A22,#5E8A35);transform:rotate(10deg)"></div>
+              <div style="position:absolute;z-index:3;left:26px;top:-7px;width:10px;height:5px;border-radius:70% 10% 70% 10%;background:#6E9A3A"></div>
+              <div data-glow="1" style="position:absolute;z-index:3;left:8px;top:13px;width:11px;height:10px;clip-path:polygon(50% 0,100% 100%,0 100%);background:radial-gradient(circle at 50% 70%,#FFF4B0,#FFC93A 70%)"></div>
+              <div data-glow="1" style="position:absolute;z-index:3;left:29px;top:13px;width:11px;height:10px;clip-path:polygon(50% 0,100% 100%,0 100%);background:radial-gradient(circle at 50% 70%,#FFF4B0,#FFC93A 70%)"></div>
+              <div data-glow="1" style="position:absolute;z-index:3;left:21px;top:23px;width:6px;height:5px;clip-path:polygon(50% 0,100% 100%,0 100%);background:#FFC93A"></div>
+              <div data-glow="1" style="position:absolute;z-index:3;left:8px;top:29px;width:32px;height:10px;clip-path:polygon(0 0,14% 40%,28% 0,42% 40%,56% 0,70% 40%,84% 0,100% 0,92% 100%,78% 60%,64% 100%,50% 60%,36% 100%,22% 60%,8% 100%);background:radial-gradient(ellipse at 50% 60%,#FFF4B0,#FFC93A 70%)"></div>
+            </div>
+            <div class="cos" data-cos="fantome">
+              <div style="position:absolute;z-index:3;left:-1px;top:-2px;width:50px;height:50px;border-radius:50%;background:radial-gradient(ellipse at 38% 30%,#ffffff,#EEF0F8 60%,#D4D8E8)"></div>
+              <div style="position:absolute;z-index:3;left:10px;top:13px;width:10px;height:14px;border-radius:50%;background:#1b1b24"><div style="position:absolute;left:2px;top:2px;width:3px;height:3px;border-radius:50%;background:#fff"></div></div>
+              <div style="position:absolute;z-index:3;left:28px;top:13px;width:10px;height:14px;border-radius:50%;background:#1b1b24"><div style="position:absolute;left:2px;top:2px;width:3px;height:3px;border-radius:50%;background:#fff"></div></div>
+              <div data-boo="1" style="position:absolute;z-index:3;left:19px;top:29px;width:10px;height:10px;border-radius:50%;background:#1b1b24;transform-origin:50% 0"></div>
+              <div style="position:absolute;z-index:3;left:5px;top:28px;width:8px;height:5px;border-radius:50%;background:#FFB7C5;opacity:.7"></div>
+              <div style="position:absolute;z-index:3;left:35px;top:28px;width:8px;height:5px;border-radius:50%;background:#FFB7C5;opacity:.7"></div>
+            </div>
+            <div class="cos" data-cos="sorciere">
+              <div data-witch="1" style="position:absolute;z-index:3;left:6px;top:-30px;width:36px;height:30px;transform-origin:50% 100%;clip-path:polygon(58% 0,72% 8%,100% 100%,0 100%);background:linear-gradient(160deg,#4a2e70,#24163a)"></div>
+              <div style="position:absolute;z-index:3;left:-9px;top:-3px;width:66px;height:8px;border-radius:50%;background:linear-gradient(180deg,#3a2458,#1c1030)"></div>
+              <div style="position:absolute;z-index:3;left:9px;top:-8px;width:30px;height:5px;background:#7C5CFF"></div>
+              <div style="position:absolute;z-index:3;left:20px;top:-9px;width:7px;height:7px;border:1.5px solid #F5C542;box-sizing:border-box"></div>
+              <div style="position:absolute;z-index:3;left:30px;top:-18px;width:5px;height:5px;background:#F5C542;clip-path:polygon(50% 0,62% 36%,100% 38%,70% 60%,80% 100%,50% 76%,20% 100%,30% 60%,0 38%,38% 36%)"></div>
+            </div>
+            <div class="cos" data-cos="fierte">
+              <div style="position:absolute;z-index:3;left:-3px;top:15px;width:7px;height:2px;border-radius:1px;background:#8a1a66;transform:rotate(-8deg)"></div>
+              <div style="position:absolute;z-index:3;left:44px;top:15px;width:7px;height:2px;border-radius:1px;background:#8a1a66;transform:rotate(8deg)"></div>
+              <div data-glass="1" style="position:absolute;z-index:3;left:0;top:0;width:48px;height:40px">
+                <div style="position:absolute;left:3px;top:9px;width:18px;height:17px;clip-path:path('M9 16.3 C9 16.3 0.6 10.7 0.6 5.2 C0.6 2.5 2.7 0.6 5 0.6 C6.8 0.6 8.2 1.6 9 3 C9.8 1.6 11.2 0.6 13 0.6 C15.3 0.6 17.4 2.5 17.4 5.2 C17.4 10.7 9 16.3 9 16.3 Z');background:#8a1a66"></div>
+                <div data-lens="1" style="position:absolute;left:4px;top:10px;width:16px;height:15px;clip-path:path('M8 14.5 C8 14.5 0.5 9.5 0.5 4.6 C0.5 2.2 2.4 0.5 4.5 0.5 C6 0.5 7.3 1.4 8 2.6 C8.7 1.4 10 0.5 11.5 0.5 C13.6 0.5 15.5 2.2 15.5 4.6 C15.5 9.5 8 14.5 8 14.5 Z');background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.65) 40%,rgba(255,255,255,0) 50%) -20px 0/40px 15px no-repeat, linear-gradient(160deg,#ff8fc8 0%,#ff4fa0 45%,#9b3df0 100%)"></div>
+                <div style="position:absolute;left:7px;top:12px;width:4px;height:3px;border-radius:50%;background:rgba(255,255,255,.8)"></div>
+                <div style="position:absolute;left:27px;top:9px;width:18px;height:17px;clip-path:path('M9 16.3 C9 16.3 0.6 10.7 0.6 5.2 C0.6 2.5 2.7 0.6 5 0.6 C6.8 0.6 8.2 1.6 9 3 C9.8 1.6 11.2 0.6 13 0.6 C15.3 0.6 17.4 2.5 17.4 5.2 C17.4 10.7 9 16.3 9 16.3 Z');background:#8a1a66"></div>
+                <div data-lens="1" style="position:absolute;left:28px;top:10px;width:16px;height:15px;clip-path:path('M8 14.5 C8 14.5 0.5 9.5 0.5 4.6 C0.5 2.2 2.4 0.5 4.5 0.5 C6 0.5 7.3 1.4 8 2.6 C8.7 1.4 10 0.5 11.5 0.5 C13.6 0.5 15.5 2.2 15.5 4.6 C15.5 9.5 8 14.5 8 14.5 Z');background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.65) 40%,rgba(255,255,255,0) 50%) -20px 0/40px 15px no-repeat, linear-gradient(160deg,#ff8fc8 0%,#ff4fa0 45%,#9b3df0 100%)"></div>
+                <div style="position:absolute;left:31px;top:12px;width:4px;height:3px;border-radius:50%;background:rgba(255,255,255,.8)"></div>
+                <div style="position:absolute;left:20px;top:13px;width:8px;height:4px;border:2px solid #8a1a66;border-bottom:none;border-radius:5px 5px 0 0;box-sizing:border-box"></div>
+              </div>
+            </div>
+            <div class="cos" data-cos="manga">
+              <div data-ear="0" style="position:absolute;z-index:3;left:1px;top:-12px;width:12px;height:16px;transform-origin:50% 100%;border-radius:50% 50% 40% 40% / 70% 70% 30% 30%;background:linear-gradient(180deg,#9AA0A6,#757B81)"><div style="position:absolute;left:3px;top:4px;width:6px;height:9px;border-radius:50% 50% 40% 40% / 70% 70% 30% 30%;background:#5E646A"></div></div>
+              <div data-ear="1" style="position:absolute;z-index:3;left:35px;top:-12px;width:12px;height:16px;transform-origin:50% 100%;border-radius:50% 50% 40% 40% / 70% 70% 30% 30%;background:linear-gradient(180deg,#9AA0A6,#757B81)"><div style="position:absolute;left:3px;top:4px;width:6px;height:9px;border-radius:50% 50% 40% 40% / 70% 70% 30% 30%;background:#5E646A"></div></div>
+              <div style="position:absolute;z-index:3;left:-1px;top:-1px;width:50px;height:48px;border-radius:50%;background:radial-gradient(ellipse at 40% 30%,#AEB3B8,#858B91 55%,#62686E);box-shadow:inset -4px -5px 8px rgba(20,24,30,.3)"></div>
+              <div style="position:absolute;z-index:3;left:6px;top:13px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #2a3a20"><div data-cartp="1" style="position:absolute;left:5px;top:4.5px;width:5px;height:5px;border-radius:50%;background:#1a1a1a"><div style="position:absolute;left:1px;top:1px;width:1.6px;height:1.6px;border-radius:50%;background:#fff"></div></div></div>
+              <div style="position:absolute;z-index:3;left:28px;top:13px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #2a3a20"><div data-cartp="1" style="position:absolute;left:4px;top:4.5px;width:5px;height:5px;border-radius:50%;background:#1a1a1a"><div style="position:absolute;left:1px;top:1px;width:1.6px;height:1.6px;border-radius:50%;background:#fff"></div></div></div>
+              <div style="position:absolute;z-index:3;left:3px;top:28px;width:9px;height:5px;border-radius:50%;background:#E8A0A0;opacity:.75"></div>
+              <div style="position:absolute;z-index:3;left:36px;top:28px;width:9px;height:5px;border-radius:50%;background:#E8A0A0;opacity:.75"></div>
+              <div style="position:absolute;z-index:4;left:15px;top:25px;width:18px;height:8px;border-radius:50% 50% 45% 45%;background:linear-gradient(180deg,#E9B45A,#C98E36)"></div>
+              <div data-pixbeak="1" style="position:absolute;z-index:4;left:17px;top:31px;width:14px;height:5px;border-radius:0 0 7px 7px;background:#A8742A"></div>
+              <div data-sprout="1" style="position:absolute;z-index:3;left:24px;top:-1px;width:0;height:0;transform-origin:0 0">
+                <div style="position:absolute;left:-1px;top:-8px;width:2px;height:8px;background:#5E8A45"></div>
+                <div style="position:absolute;left:-8px;top:-12px;width:8px;height:5px;border-radius:70% 10% 70% 10%;background:#8DB36A;transform:rotate(-20deg)"></div>
+                <div style="position:absolute;left:0;top:-13px;width:8px;height:5px;border-radius:10% 70% 10% 70%;background:#7FA65A;transform:rotate(20deg)"></div>
+              </div>
+            </div>
+            <div class="cos" data-cos="zzOldManga">
+              <div style="position:absolute;z-index:3;left:3px;top:9px;width:42px;height:13px;border-radius:40% 40% 50% 50%;background:linear-gradient(180deg,rgba(40,20,60,.45),rgba(40,20,60,0))"></div>
+              <div style="position:absolute;z-index:3;left:7px;top:15px;width:14px;height:7px;clip-path:polygon(0 25%,100% 0,92% 100%,12% 100%);background:#fff;box-shadow:inset 0 0 0 1px #141414"><div data-cartp="1" style="position:absolute;left:7px;top:2px;width:3.5px;height:3.5px;border-radius:50%;background:#141414"></div></div>
+              <div style="position:absolute;z-index:3;left:27px;top:15px;width:14px;height:7px;clip-path:polygon(0 0,100% 25%,88% 100%,8% 100%);background:#fff;box-shadow:inset 0 0 0 1px #141414"><div data-cartp="1" style="position:absolute;left:3.5px;top:2px;width:3.5px;height:3.5px;border-radius:50%;background:#141414"></div></div>
+              <div style="position:absolute;z-index:3;left:5px;top:10px;width:16px;height:4px;background:#141414;clip-path:polygon(0 100%,100% 30%,100% 100%,0 100%,0 40%,100% 0,100% 70%,0 100%);transform:rotate(14deg)"></div>
+              <div style="position:absolute;z-index:3;left:27px;top:10px;width:16px;height:4px;background:#141414;clip-path:polygon(0 0,100% 40%,100% 100%,0 70%);transform:rotate(-14deg)"></div>
+              <div style="position:absolute;z-index:3;left:4px;top:28px;width:8px;height:6px;background:repeating-linear-gradient(60deg,transparent 0 1.6px,rgba(30,20,50,.5) 1.6px 2.4px)"></div>
+              <div style="position:absolute;z-index:3;left:36px;top:28px;width:8px;height:6px;background:repeating-linear-gradient(120deg,transparent 0 1.6px,rgba(30,20,50,.5) 1.6px 2.4px)"></div>
+              <div style="position:absolute;z-index:4;left:13.5px;top:24.5px;width:21px;height:8px;border-radius:50% 50% 30% 30%;background:#FF8A1A"></div>
+              <div data-grin="1" style="position:absolute;z-index:4;left:12px;top:31px;width:24px;height:8px;border-radius:2px 2px 12px 12px;background:repeating-linear-gradient(90deg,#fff 0 3.6px,#c9ced8 3.6px 4.4px);box-shadow:0 0 0 1.5px #141414;transform-origin:50% 0"></div>
+              <div style="position:absolute;z-index:4;left:12px;top:34.5px;width:24px;height:1px;background:#9aa0ab"></div>
+              <div data-pixbeak="1" style="position:absolute;z-index:4;left:14px;top:38px;width:20px;height:5px;border-radius:0 0 8px 8px;background:#E5730A"></div>
+              <div style="position:absolute;z-index:3;left:-1px;top:-4px;width:50px;height:30px;border-radius:50% 50% 30% 30% / 70% 70% 30% 30%;background:linear-gradient(170deg,#e04a55,#C8263A 50%,#8a1424);-webkit-mask:linear-gradient(#000 0 40%,transparent 40%),linear-gradient(90deg,#000 0 14%,transparent 14% 86%,#000 86%);mask:linear-gradient(#000 0 40%,transparent 40%),linear-gradient(90deg,#000 0 14%,transparent 14% 86%,#000 86%)"></div>
+              <div style="position:absolute;z-index:3;left:-8px;top:-18px;width:64px;height:30px;clip-path:polygon(4% 100%,0 70%,8% 78%,12% 30%,22% 66%,30% 4%,40% 56%,50% 0,60% 56%,70% 4%,78% 66%,88% 30%,92% 78%,100% 70%,96% 100%);background:linear-gradient(170deg,#ff6b6b,#C8263A 55%,#8a1424)"></div>
+              <div style="position:absolute;z-index:3;left:-7px;top:6px;width:10px;height:16px;clip-path:polygon(100% 0,60% 40%,0 100%,40% 50%,30% 30%);background:#a81c2c"></div>
+              <div style="position:absolute;z-index:3;left:45px;top:6px;width:10px;height:16px;clip-path:polygon(0 0,40% 40%,100% 100%,60% 50%,70% 30%);background:#a81c2c"></div>
+              <div style="position:absolute;z-index:3;left:2px;top:3px;width:44px;height:9px;clip-path:polygon(0 0,100% 0,96% 100%,84% 30%,72% 92%,60% 24%,48% 100%,36% 24%,24% 90%,12% 30%,4% 80%);background:linear-gradient(180deg,#C8263A,#9a1828)"></div>
+              <div style="position:absolute;z-index:3;left:14px;top:-9px;width:1.5px;height:9px;border-radius:1px;background:rgba(255,220,220,.35);transform:rotate(-24deg)"></div>
+              <div data-ahoge="1" style="position:absolute;z-index:3;left:22px;top:-22px;width:8px;height:12px;border:2.5px solid #C8263A;border-color:#C8263A transparent transparent #C8263A;top:-24px;display:none;border-radius:60% 0 0 0;box-sizing:border-box;transform-origin:50% 100%"></div>
+            </div>
+            <div class="cos" data-cos="furry">
+              <div data-ear="0" style="position:absolute;z-index:3;left:-2px;top:-19px;width:20px;height:26px;transform-origin:60% 95%">
+                <div style="position:absolute;inset:0;clip-path:polygon(46% 0,60% 14%,74% 34%,88% 60%,100% 100%,0 100%,6% 62%,16% 36%,30% 14%);background:linear-gradient(175deg,#2e1a10 0%,#3a2014 16%,#C85A1E 30%,#F08A3E 60%,#E07430 100%)"></div>
+                <div style="position:absolute;left:4px;top:8px;width:12px;height:17px;clip-path:polygon(46% 0,62% 20%,78% 46%,90% 74%,100% 100%,0 100%,8% 74%,20% 46%,32% 20%);background:linear-gradient(180deg,#E58A9E 0%,#FFB7C5 45%,#FFD3DC 100%)"></div>
+                <div style="position:absolute;left:3px;top:14px;width:14px;height:12px;clip-path:polygon(0 100%,8% 30%,20% 70%,32% 10%,44% 66%,56% 0,68% 62%,80% 16%,92% 60%,100% 100%);background:#FFF5EA"></div>
+                <div style="position:absolute;left:7px;top:4px;width:2px;height:9px;border-radius:1px;background:rgba(255,255,255,.35);transform:rotate(-14deg)"></div>
+              </div>
+              <div data-ear="1" style="position:absolute;z-index:3;left:30px;top:-19px;width:20px;height:26px;transform-origin:40% 95%">
+                <div style="position:absolute;inset:0;clip-path:polygon(54% 0,70% 14%,84% 36%,94% 62%,100% 100%,0 100%,12% 60%,26% 34%,40% 14%);background:linear-gradient(185deg,#2e1a10 0%,#3a2014 16%,#C85A1E 30%,#F08A3E 60%,#E07430 100%)"></div>
+                <div style="position:absolute;left:4px;top:8px;width:12px;height:17px;clip-path:polygon(54% 0,68% 20%,80% 46%,92% 74%,100% 100%,0 100%,10% 74%,22% 46%,38% 20%);background:linear-gradient(180deg,#E58A9E 0%,#FFB7C5 45%,#FFD3DC 100%)"></div>
+                <div style="position:absolute;left:3px;top:14px;width:14px;height:12px;clip-path:polygon(0 100%,8% 40%,20% 84%,32% 16%,44% 70%,56% 0,68% 66%,80% 10%,92% 70%,100% 100%);background:#FFF5EA"></div>
+                <div style="position:absolute;left:11px;top:4px;width:2px;height:9px;border-radius:1px;background:rgba(255,255,255,.3);transform:rotate(14deg)"></div>
+              </div>
+              <div style="position:absolute;z-index:3;left:0;top:1px;width:21px;height:11px;border-radius:50%;background:radial-gradient(ellipse at 55% 70%,#F08A3E 55%,rgba(240,138,62,0) 72%);transform:rotate(-24deg)"></div>
+              <div style="position:absolute;z-index:3;left:27px;top:1px;width:21px;height:11px;border-radius:50%;background:radial-gradient(ellipse at 45% 70%,#F08A3E 55%,rgba(240,138,62,0) 72%);transform:rotate(24deg)"></div>
+              <div style="position:absolute;z-index:3;left:12px;top:-1px;width:24px;height:9px;border-radius:50% 50% 40% 40%;background:#F08A3E"></div>
+              <div style="position:absolute;z-index:3;left:16px;top:-6px;width:6px;height:11px;border-radius:60% 40% 40% 50%;background:linear-gradient(180deg,#F49A56,#E07a32);transform:rotate(-24deg)"></div>
+              <div style="position:absolute;z-index:3;left:21px;top:-9px;width:6px;height:13px;border-radius:50% 50% 40% 40%;background:linear-gradient(180deg,#F7A666,#E8803a)"></div>
+              <div style="position:absolute;z-index:3;left:26px;top:-6px;width:6px;height:11px;border-radius:40% 60% 50% 40%;background:linear-gradient(180deg,#F49A56,#E07a32);transform:rotate(24deg)"></div>
+              <div style="position:absolute;z-index:3;left:23px;top:-6px;width:1.5px;height:6px;border-radius:1px;background:rgba(255,255,255,.4)"></div>
+              <div style="position:absolute;z-index:3;left:-6px;top:24px;width:12px;height:14px;clip-path:polygon(100% 0,60% 20%,0 30%,45% 50%,0 75%,55% 80%,100% 100%);background:#FFF5EA"></div>
+              <div style="position:absolute;z-index:3;left:42px;top:24px;width:12px;height:14px;clip-path:polygon(0 0,40% 20%,100% 30%,55% 50%,100% 75%,45% 80%,0 100%);background:#FFF5EA"></div>
+              <div style="position:absolute;z-index:3;left:0;top:0;width:48px;height:46px;border-radius:50%;background:repeating-linear-gradient(115deg,transparent 0 5px,rgba(160,70,20,.18) 5px 6px);-webkit-mask:radial-gradient(circle at 50% 40%,transparent 38%,#000 70%);mask:radial-gradient(circle at 50% 40%,transparent 38%,#000 70%)"></div>
+              <div style="position:absolute;z-index:3;left:6px;top:-6px;width:6px;height:9px;clip-path:polygon(0 100%,30% 0,60% 60%,100% 10%,80% 100%);background:#FFF5EA"></div>
+              <div style="position:absolute;z-index:3;left:36px;top:-6px;width:6px;height:9px;clip-path:polygon(20% 100%,0 10%,40% 60%,70% 0,100% 100%);background:#FFF5EA"></div>
+              <div style="position:absolute;z-index:3;left:8px;top:28px;width:32px;height:17px;border-radius:45% 45% 50% 50% / 40% 40% 60% 60%;background:radial-gradient(ellipse at 50% 30%,#ffffff,#FFF1E2 70%,#F6DEC8)"></div>
+              <div style="position:absolute;z-index:4;left:13.5px;top:25.5px;width:21px;height:9.5px;border-radius:50% 50% 45% 45%;background:#FF8A1A"></div>
+              <div style="position:absolute;z-index:4;left:17px;top:26.5px;width:6px;height:2px;border-radius:1px;background:rgba(255,255,255,.55)"></div>
+              <div data-pixbeak="1" style="position:absolute;z-index:4;left:16.5px;top:31px;width:15px;height:7px;border-radius:0 0 8px 8px;background:#F07510"></div>
+              <div style="position:absolute;z-index:4;left:7px;top:31px;width:8px;height:4.5px;border-radius:50%;background:#FF8FA3;opacity:.85"></div>
+              <div style="position:absolute;z-index:4;left:33px;top:31px;width:8px;height:4.5px;border-radius:50%;background:#FF8FA3;opacity:.85"></div>
+              <div style="position:absolute;z-index:4;left:16px;top:12px;width:3px;height:3px;background:#fff;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)"></div>
+              <div style="position:absolute;z-index:4;left:34px;top:12px;width:3px;height:3px;background:#fff;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)"></div>
+            </div>
+            <div class="cos" data-cos="brique">
+              <div data-brick="4" style="position:absolute;z-index:3;left:2px;top:2px;width:44px;height:42px;border-radius:7px;background:linear-gradient(160deg,#FFE35A 0%,#FFCD1F 50%,#E0A800 100%);box-shadow:inset -3px -4px 0 rgba(150,90,0,.25), inset 3px 3px 0 rgba(255,255,255,.45)">
+                <div style="position:absolute;left:5px;top:4px;width:14px;height:5px;border-radius:3px;background:rgba(255,255,255,.55)"></div>
+                <div style="position:absolute;left:14px;top:-8px;width:16px;height:9px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,#E0A800,#FFE35A 40%,#E0A800)"></div>
+                <div style="position:absolute;left:14px;top:-11px;width:16px;height:6px;border-radius:50%;background:#FFE35A;box-shadow:inset 0 -1px 0 rgba(150,90,0,.3)"></div>
+                <div style="position:absolute;left:9px;top:14px;width:7px;height:8px;border-radius:50%;background:#141414"><div style="position:absolute;left:1.5px;top:1.5px;width:2.5px;height:2.5px;border-radius:50%;background:#fff"></div></div>
+                <div style="position:absolute;left:28px;top:14px;width:7px;height:8px;border-radius:50%;background:#141414"><div style="position:absolute;left:1.5px;top:1.5px;width:2.5px;height:2.5px;border-radius:50%;background:#fff"></div></div>
+              </div>
+              <div data-brick="5" style="position:absolute;z-index:4;left:12px;top:25px;width:24px;height:9px;border-radius:3px;background:linear-gradient(180deg,#FF9A2E,#E5730A);box-shadow:inset 0 2px 0 rgba(255,255,255,.35)">
+                <div style="position:absolute;left:4px;top:-3px;width:6px;height:3px;border-radius:2px 2px 0 0;background:#FF9A2E"></div>
+                <div style="position:absolute;left:14px;top:-3px;width:6px;height:3px;border-radius:2px 2px 0 0;background:#FF9A2E"></div>
+              </div>
+              <div data-pixbeak="1" style="position:absolute;z-index:4;left:14px;top:33px;width:20px;height:5px;border-radius:0 0 3px 3px;background:#C9600A"></div>
+            </div>
+            <div class="cos" data-cos="armure">
+              <div style="position:absolute;z-index:3;left:-1px;top:-3px;width:50px;height:49px;border-radius:50% 50% 42% 42%;background:linear-gradient(160deg,#e8504a 0%,#b3141c 50%,#6e0a10 100%);box-shadow:inset -4px -5px 8px rgba(0,0,0,.35), inset 4px 4px 6px rgba(255,255,255,.5)"></div>
+              <div style="position:absolute;z-index:3;left:22.5px;top:-3px;width:3px;height:16px;background:#7a0c12"></div>
+              <div style="position:absolute;z-index:3;left:5px;top:10px;width:38px;height:28px;border-radius:12px 12px 16px 16px;background:linear-gradient(180deg,#FFE08A,#E3B23C 55%,#A8781A);box-shadow:inset 0 0 0 1.5px #7a5410, inset 0 -3px 4px rgba(120,70,0,.3)"></div>
+              <div data-armeye="1" style="position:absolute;z-index:3;left:9px;top:17px;width:12px;height:4px;border-radius:2px 1px 3px 1px;background:#9ff3ff;box-shadow:0 0 6px #4fdcff, 0 0 2px #fff;transform:rotate(8deg)"></div>
+              <div data-armeye="1" style="position:absolute;z-index:3;left:27px;top:17px;width:12px;height:4px;border-radius:1px 2px 1px 3px;background:#9ff3ff;box-shadow:0 0 6px #4fdcff, 0 0 2px #fff;transform:rotate(-8deg)"></div>
+              <div style="position:absolute;z-index:4;left:13px;top:26px;width:22px;height:8px;border-radius:50% 50% 40% 40%;background:linear-gradient(180deg,#FFE08A,#C9962A);box-shadow:inset 0 -2px 0 rgba(120,70,0,.3)"></div>
+              <div data-pixbeak="1" style="position:absolute;z-index:4;left:16px;top:32px;width:16px;height:5px;border-radius:0 0 7px 7px;background:#A8781A"></div>
+              <div style="position:absolute;z-index:3;left:-4px;top:14px;width:6px;height:12px;border-radius:3px;background:#8e1016;box-shadow:0 0 0 1px #5a070c"></div>
+              <div style="position:absolute;z-index:3;left:46px;top:14px;width:6px;height:12px;border-radius:3px;background:#8e1016;box-shadow:0 0 0 1px #5a070c"></div>
+            </div>
+            <div class="cos" data-cos="goth">
+              <div style="position:absolute;z-index:3;left:6px;top:12px;width:18px;height:19px;border-radius:50%;border:2px solid #2a1630;box-sizing:border-box;box-shadow:0 2px 3px rgba(60,20,80,.35)"></div>
+              <div style="position:absolute;z-index:3;left:3px;top:17px;width:6px;height:2px;border-radius:1px;background:#2a1630;transform:rotate(-25deg)"></div>
+              <div style="position:absolute;z-index:4;left:13.5px;top:25.5px;width:21px;height:9.5px;border-radius:50% 50% 45% 45%;background:linear-gradient(180deg,#5a2470,#3a1548)"></div>
+              <div style="position:absolute;z-index:4;left:16px;top:27px;width:6px;height:2px;border-radius:1px;background:rgba(255,255,255,.35)"></div>
+              <div data-pixbeak="1" style="position:absolute;z-index:4;left:16.5px;top:31px;width:15px;height:7px;border-radius:0 0 8px 8px;background:#2e1038"></div>
+              <div style="position:absolute;z-index:3;left:1px;top:-5px;width:46px;height:18px;border-radius:50% 50% 20% 20%;background:linear-gradient(170deg,#2a2230,#0f0c12);box-shadow:inset 2px 2px 0 rgba(160,120,200,.15)"></div>
+              <div style="position:absolute;z-index:3;left:0;top:7px;width:8px;height:22px;border-radius:50% 30% 60% 40%;background:#141016"></div>
+              <div style="position:absolute;z-index:3;left:40px;top:7px;width:8px;height:22px;border-radius:30% 50% 40% 60%;background:#141016"></div>
+              <div style="position:absolute;z-index:3;left:22px;top:6px;width:24px;height:20px;border-radius:2px 2px 4px 16px;background:linear-gradient(175deg,#1d1722,#0f0c12);transform:skewX(-8deg)"></div>
+              <div style="position:absolute;z-index:3;left:30px;top:8px;width:9px;height:1.5px;background:rgba(160,120,200,.3);transform:rotate(-30deg)"></div>
+            </div>
+            <div class="cos" data-cos="president">
+              <div style="position:absolute;z-index:3;left:1px;top:-8px;width:44px;height:15px;border-radius:60% 70% 30% 30%;background:linear-gradient(170deg,#FBE29A,#EDBE57);box-shadow:inset -3px -2px 0 rgba(160,110,20,.25)"></div>
+              <div data-hair="1" style="position:absolute;z-index:3;left:22px;top:-6px;width:28px;height:12px;border-radius:60% 85% 55% 25%;background:linear-gradient(170deg,#FFE7A6,#F0C25E);transform-origin:0 60%;box-shadow:inset -2px -2px 0 rgba(160,110,20,.22)"></div>
+              <div style="position:absolute;z-index:3;left:0;top:2px;width:7px;height:12px;border-radius:3px 2px 4px 4px;background:#EDBE57"></div>
+              <div style="position:absolute;z-index:3;left:14px;top:-4px;width:14px;height:2px;border-radius:1px;background:rgba(255,255,255,.55);transform:rotate(-8deg)"></div>
+              <div style="position:absolute;z-index:3;left:8px;top:12px;width:12px;height:2.5px;border-radius:2px;background:#E9C77A;transform:rotate(-4deg)"></div>
+              <div style="position:absolute;z-index:3;left:28px;top:12px;width:12px;height:2.5px;border-radius:2px;background:#E9C77A;transform:rotate(4deg)"></div>
+            </div>
+            <div class="cos" data-cos="pixel">
+              <div style="position:absolute;z-index:3;left:2px;top:0;width:44px;height:44px;border-radius:2px;background-color:#F2C230;background-image:linear-gradient(90deg,rgba(0,0,0,.07) 50%,transparent 50%),linear-gradient(rgba(255,255,255,.08) 50%,transparent 50%);background-size:11px 11px;box-shadow:inset -4px -4px 0 rgba(150,90,0,.25), inset 4px 4px 0 rgba(255,255,255,.2)"></div>
+              <div style="position:absolute;z-index:3;left:24px;top:4px;width:5.5px;height:5.5px;background:#FFE07A"></div>
+              <div style="position:absolute;z-index:3;left:8px;top:13px;width:9px;height:9px;background:#fff"><div data-cartp="1" style="position:absolute;left:3px;top:3px;width:5px;height:5px;background:#1b1b1d"></div></div>
+              <div style="position:absolute;z-index:3;left:31px;top:13px;width:9px;height:9px;background:#fff"><div data-cartp="1" style="position:absolute;left:1px;top:3px;width:5px;height:5px;background:#1b1b1d"></div></div>
+              <div style="position:absolute;z-index:3;left:13px;top:26px;width:22px;height:7px;background:#F08A1C;box-shadow:inset 0 -2px 0 #c8701a"></div>
+              <div data-pixbeak="1" style="position:absolute;z-index:3;left:15px;top:33px;width:18px;height:5px;background:#C9701A"></div>
+            </div>
+            <div class="cos" data-cos="cartoon">
+              <div style="position:absolute;z-index:3;left:3px;top:13px;width:22px;height:20px;border-radius:50%;background:#e9e9ea;box-shadow:inset 0 0 0 0.8px rgba(0,0,0,.35);transform:rotate(-8deg)"><div data-cartp="1" style="position:absolute;left:13px;top:8.5px;width:3.2px;height:3.2px;border-radius:50%;background:#111"></div></div>
+              <div style="position:absolute;z-index:3;left:23px;top:13px;width:22px;height:20px;border-radius:50%;background:#e9e9ea;box-shadow:inset 0 0 0 0.8px rgba(0,0,0,.35);transform:rotate(8deg)"><div data-cartp="1" style="position:absolute;left:6px;top:8.5px;width:3.2px;height:3.2px;border-radius:50%;background:#111"></div></div>
+              <div style="position:absolute;z-index:3;left:23.5px;top:16px;width:1px;height:12px;background:rgba(0,0,0,.35)"></div>
+              <div style="position:absolute;z-index:3;left:10px;top:10.5px;width:14px;height:1.8px;background:#111;transform:rotate(30deg);border-radius:1px"></div>
+              <div style="position:absolute;z-index:3;left:24px;top:10.5px;width:14px;height:1.8px;background:#111;transform:rotate(-30deg);border-radius:1px"></div>
+              <div style="position:absolute;z-index:2;left:6px;top:36px;width:36px;height:8px;border-bottom:1px solid #111;border-radius:0 0 50% 50%;box-sizing:border-box"></div>
+              <div style="position:absolute;z-index:3;left:1px;top:-7px;width:46px;height:20px;border-radius:50% 50% 8% 8% / 100% 100% 8% 8%;background:#C8373B"></div>
+              <div style="position:absolute;z-index:3;left:-1px;top:9px;width:50px;height:5px;border-radius:3px;background:#F4F1EA"></div>
+              <div style="position:absolute;z-index:3;left:16px;top:-11px;width:16px;height:7px;border-radius:50% 60% 40% 50%;background:#F4F1EA;box-shadow:4px 1px 0 -1px #F4F1EA, -4px 1px 0 -1px #F4F1EA"></div>
+            </div>
+            <div class="cos" data-cos="cafe">
+              <div style="position:absolute;z-index:3;left:4px;top:-9px;width:40px;height:18px;border-radius:55% 60% 30% 30%;background:#33201a"></div>
+              <div style="position:absolute;z-index:3;left:11px;top:-19px;width:30px;height:17px;border-radius:65% 75% 30% 45%;background:#3a2418;transform:rotate(-10deg)"></div>
+              <div style="position:absolute;z-index:3;left:28px;top:-15px;width:16px;height:11px;border-radius:70% 60% 40% 30%;background:#462c1e;transform:rotate(18deg)"></div>
+              <div style="position:absolute;z-index:3;left:15px;top:-16px;width:14px;height:4px;border-radius:50%;background:#5a3a26;transform:rotate(-14deg)"></div>
+              <div style="position:absolute;z-index:3;left:2px;top:5px;width:5px;height:13px;border-radius:2px 2px 4px 4px;background:#33201a"></div>
+              <div style="position:absolute;z-index:3;left:41px;top:5px;width:5px;height:13px;border-radius:2px 2px 4px 4px;background:#33201a"></div>
+              <div style="position:absolute;z-index:3;left:7px;top:11px;width:14px;height:3.5px;border-radius:2px 3px 1px 2px;background:#2a1a12;transform:rotate(7deg)"></div>
+              <div style="position:absolute;z-index:3;left:27px;top:11px;width:14px;height:3.5px;border-radius:3px 2px 2px 1px;background:#2a1a12;transform:rotate(-7deg)"></div>
+              <div style="position:absolute;z-index:3;left:3px;top:28px;width:12px;height:11px;border-radius:50%;background:radial-gradient(#3a2418 0.7px,transparent 0.9px) 0 0/2.6px 2.6px;opacity:.55"></div>
+              <div style="position:absolute;z-index:3;left:33px;top:28px;width:12px;height:11px;border-radius:50%;background:radial-gradient(#3a2418 0.7px,transparent 0.9px) 0 0/2.6px 2.6px;opacity:.55"></div>
+              <div style="position:absolute;z-index:3;left:-4px;top:-5px;width:56px;height:30px;border:3.5px solid #1b1b1d;border-bottom:none;border-radius:28px 28px 0 0;box-sizing:border-box"></div>
+              <div style="position:absolute;z-index:3;left:-7px;top:15px;width:11px;height:18px;border-radius:5px;background:#1b1b1d;box-shadow:inset 2px 0 0 #333"></div>
+              <div style="position:absolute;z-index:3;left:44px;top:15px;width:11px;height:18px;border-radius:5px;background:#1b1b1d;box-shadow:inset -2px 0 0 #333"><div style="position:absolute;left:5px;top:13px;width:2.5px;height:2.5px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 3px #ff3b3b"></div></div>
+              <div style="position:absolute;z-index:3;left:7px;top:15px;width:15px;height:10px;border:1px solid rgba(90,60,45,.7);border-top:2.6px solid #2a1a14;border-radius:2px 2px 5px 5px;box-sizing:border-box;background:rgba(255,255,255,.1)"></div>
+              <div style="position:absolute;z-index:3;left:26px;top:15px;width:15px;height:10px;border:1px solid rgba(90,60,45,.7);border-top:2.6px solid #2a1a14;border-radius:2px 2px 5px 5px;box-sizing:border-box;background:rgba(255,255,255,.1)"></div>
+              <div style="position:absolute;z-index:3;left:21.5px;top:16.5px;width:5px;height:1.6px;background:#2a1a14"></div>
+              <div style="position:absolute;z-index:3;left:9px;top:17px;width:4px;height:2px;border-radius:1px;background:rgba(255,255,255,.55);transform:rotate(-20deg)"></div>
+              <div style="position:absolute;z-index:4;left:11px;top:28px;width:14px;height:6px;border-radius:70% 30% 20% 80%;background:#3a2418;transform:rotate(-14deg)"></div>
+              <div style="position:absolute;z-index:4;left:23px;top:28px;width:14px;height:6px;border-radius:30% 70% 80% 20%;background:#3a2418;transform:rotate(14deg)"></div>
+              <div style="position:absolute;z-index:4;left:10px;top:31px;width:3px;height:6px;border-radius:2px;background:#3a2418;transform:rotate(12deg)"></div>
+              <div style="position:absolute;z-index:4;left:35px;top:31px;width:3px;height:6px;border-radius:2px;background:#3a2418;transform:rotate(-12deg)"></div>
+              <div style="position:absolute;z-index:4;left:18px;top:37px;width:12px;height:11px;border-radius:30% 30% 50% 50% / 20% 20% 80% 80%;background:#3a2418"></div>
+              <div style="position:absolute;z-index:4;left:21px;top:38px;width:6px;height:2px;border-radius:1px;background:#4e3424"></div>
+            </div>
+            <div class="cos" data-cos="flocage">
+              <div style="position:absolute;z-index:3;left:-6px;top:15px;width:9px;height:17px;border-radius:5px;background:#2a1c63;border:2px solid #4fc3ff;box-sizing:border-box;box-shadow:0 0 6px #4fc3ff"></div>
+              <div style="position:absolute;z-index:3;left:45px;top:15px;width:9px;height:17px;border-radius:5px;background:#2a1c63;border:2px solid #4fc3ff;box-sizing:border-box;box-shadow:0 0 6px #4fc3ff"></div>
+              <div style="position:absolute;z-index:3;left:-3px;top:-4px;width:54px;height:51px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#7d55ff 0,#4a2ec0 30%,#24175a 75%);box-shadow:0 0 0 2px #fff, inset -4px -6px 10px rgba(0,0,0,.45)"></div>
+              <div style="position:absolute;z-index:3;left:19px;top:-1px;width:14px;height:6px;background:#d9ccff;transform:skewX(-35deg);border-radius:1px"></div>
+              <div style="position:absolute;z-index:3;left:21px;top:5px;width:8px;height:3px;background:#9b7bff;transform:skewX(-35deg)"></div>
+              <div style="position:absolute;z-index:3;left:3px;top:13px;width:42px;height:26px;border-radius:11px 11px 16px 16px;background:linear-gradient(180deg,#0b2f86,#1a6fe8);border:2.5px solid #8a63ff;box-sizing:border-box;box-shadow:0 0 10px rgba(79,195,255,.7), inset 0 0 8px rgba(120,220,255,.6)">
+                <div data-visor="L" style="position:absolute;left:10px;top:6px;width:5px;height:10px;border-radius:3px;background:#c9f4ff;box-shadow:0 0 6px #5fd0ff"></div>
+                <div data-visor="R" style="position:absolute;left:23px;top:6px;width:5px;height:10px;border-radius:3px;background:#c9f4ff;box-shadow:0 0 6px #5fd0ff"></div>
+                <div style="position:absolute;left:4px;top:2px;width:10px;height:3px;border-radius:2px;background:rgba(255,255,255,.4)"></div>
+              </div>
+
+            </div>
+            <div class="cos" data-cos="astro">
+              <div style="position:absolute;left:-8px;top:-9px;width:64px;height:62px;border-radius:50%;border:2.5px solid rgba(255,255,255,.85);background:rgba(160,210,255,.16);box-sizing:border-box"></div>
+              <div style="position:absolute;left:1px;top:2px;width:13px;height:6px;border-radius:50%;background:rgba(255,255,255,.6);transform:rotate(-35deg)"></div>
+            </div>
+            <div class="cos" data-cos="sport">
+              <div style="position:absolute;left:1px;top:5px;width:46px;height:6px;border-radius:3px;background:#E63946"></div>
+            </div>
+            <div class="cos" data-cos="musique">
+              <div style="position:absolute;left:-1px;top:-7px;width:50px;height:30px;border:4px solid #222;border-bottom:none;border-radius:25px 25px 0 0;box-sizing:border-box"></div>
+              <div style="position:absolute;left:-5px;top:17px;width:9px;height:15px;border-radius:4px;background:#7C5CFF"></div>
+              <div style="position:absolute;left:44px;top:17px;width:9px;height:15px;border-radius:4px;background:#7C5CFF"></div>
+            </div>
+            <div class="cos" data-cos="ninja">
+              <div style="position:absolute;left:0;top:5px;width:48px;height:7px;border-radius:3px;background:#141414"></div>
+              <div style="position:absolute;left:44px;top:7px;width:13px;height:3px;border-radius:2px;background:#141414;transform:rotate(22deg);transform-origin:0 50%"></div>
+              <div style="position:absolute;left:44px;top:8px;width:11px;height:3px;border-radius:2px;background:#141414;transform:rotate(48deg);transform-origin:0 50%"></div>
+            </div>
+            <div class="cos" data-cos="detective">
+              <div style="position:absolute;left:9px;top:-10px;width:30px;height:14px;border-radius:14px 14px 2px 2px;background:repeating-linear-gradient(90deg,#8A6E4B 0 4px,#6E5636 4px 6px)"></div>
+              <div style="position:absolute;left:3px;top:2px;width:42px;height:4px;border-radius:2px;background:#5C4630"></div>
+            </div>
+            <div class="cos" data-cos="malade">
+              <div style="position:absolute;left:12px;top:-8px;width:24px;height:10px;border-radius:6px;background:#8FD3FF"></div>
+              <div style="position:absolute;left:30px;top:31px;width:18px;height:3px;border-radius:2px;background:#fff;transform:rotate(14deg);transform-origin:0 50%"></div>
+              <div style="position:absolute;left:45px;top:34px;width:4px;height:4px;border-radius:50%;background:#E63946"></div>
+            </div>
+            <div class="cos" data-cos="frog">
+              <div data-frog="sac" style="position:absolute;left:13px;top:33px;width:22px;height:11px;border-radius:50%;background:#A8D86A;transform-origin:50% 0"></div>
+              <div style="position:absolute;left:11px;top:23px;width:26px;height:17px;border-radius:50%;background:#4E9A3A"></div>
+              <div data-frog="tongue" style="position:absolute;left:24px;top:31px;width:34px;height:3.5px;border-radius:2px;background:#FF6F91;transform-origin:0 50%;transform:scaleX(0)"><div style="position:absolute;right:-2px;top:-1.5px;width:6px;height:6px;border-radius:50%;background:#FF6F91"></div></div>
+              <div style="position:absolute;left:7px;top:27px;width:34px;height:9px;border-bottom:3.5px solid #8E2F1E;border-radius:0 0 50% 50%;box-sizing:border-box"></div>
+              <div style="position:absolute;left:7px;top:11px;width:16px;height:9px;border-radius:8px 8px 3px 3px;background:#3F8530"></div>
+              <div style="position:absolute;left:25px;top:11px;width:16px;height:9px;border-radius:8px 8px 3px 3px;background:#3F8530"></div>
+              <div style="position:absolute;left:16px;top:21px;width:2px;height:2px;border-radius:50%;background:#2B5E20"></div>
+              <div style="position:absolute;left:30px;top:21px;width:2px;height:2px;border-radius:50%;background:#2B5E20"></div>
+            </div>
+            <div class="cos" data-cos="pirate">
+              <div style="position:absolute;left:-1px;top:16px;width:50px;height:2px;background:#141414;transform:rotate(-14deg)"></div>
+              <div style="position:absolute;left:25px;top:12px;width:16px;height:17px;border-radius:50%;background:#141414"></div>
+              <div style="position:absolute;left:6px;top:-7px;width:36px;height:15px;border-radius:18px 18px 4px 4px;background:#C0392B"></div>
+              <div style="position:absolute;left:39px;top:1px;width:9px;height:7px;border-radius:50%;background:#A93226"></div>
+            </div>
+            <div class="cos" data-cos="anniv">
+              <div style="position:absolute;left:14px;top:-24px;width:20px;height:28px;clip-path:polygon(50% 0,100% 100%,0 100%);background:repeating-linear-gradient(135deg,#7C5CFF 0 5px,#FFD23F 5px 10px)"></div>
+              <div style="position:absolute;left:20px;top:-29px;width:8px;height:8px;border-radius:50%;background:#FF5C8A"></div>
+            </div>
+            <div class="cos" data-cos="noel">
+              <div style="position:absolute;z-index:3;left:8px;top:-17px;width:32px;height:21px;border-radius:75% 55% 0 0 / 100% 95% 0 0;background:linear-gradient(160deg,#ef4b4b 0%,#d62828 55%,#a8141f 100%);box-shadow:inset -4px -3px 6px rgba(80,0,10,.35)"></div>
+              <div style="position:absolute;z-index:3;left:13px;top:-13px;width:9px;height:4px;border-radius:50%;background:rgba(255,255,255,.35);transform:rotate(-25deg)"></div>
+              <div data-santa="1" style="position:absolute;z-index:3;left:27px;top:-20px;width:0;height:10px;transform-origin:0 50%;transform:rotate(40deg)">
+                <div style="position:absolute;left:-2px;top:0;width:16px;height:10px;clip-path:polygon(0 0,100% 18%,100% 82%,0 100%);background:linear-gradient(180deg,#e63946,#b5192a)"></div>
+                <div data-santa="2" style="position:absolute;left:13px;top:1px;width:0;height:8px;transform-origin:0 50%;transform:rotate(25deg)">
+                  <div style="position:absolute;left:-1px;top:0.5px;width:13px;height:7px;clip-path:polygon(0 0,100% 25%,100% 75%,0 100%);background:linear-gradient(180deg,#d62828,#a8141f)"></div>
+                  <div style="position:absolute;left:9px;top:-1.5px;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff 0,#f1f1f1 55%,#d9dde3 100%);box-shadow:0 1px 2px rgba(0,0,0,.25)"></div>
+                </div>
+              </div>
+              <div style="position:absolute;z-index:3;left:3px;top:-2px;width:42px;height:9px;border-radius:5px;background:#f4f4f4;box-shadow:inset 0 -2px 0 #dcdfe4"></div>
+              <div style="position:absolute;z-index:3;left:1px;top:-3.5px;width:46px;height:12px;background:radial-gradient(circle at 4.5px 50%,#fff 4px,transparent 4.6px) 0 0/8.5px 100% repeat-x;filter:drop-shadow(0 1px 0 #d6d9de)"></div>
+            </div>
+            <div class="cos" data-cos="riche">
+              <div style="position:absolute;left:6px;top:14px;width:17px;height:12px;border-radius:4px 4px 7px 7px;background:#111"></div>
+              <div style="position:absolute;left:25px;top:14px;width:17px;height:12px;border-radius:4px 4px 7px 7px;background:#111"></div>
+              <div style="position:absolute;left:22px;top:16px;width:4px;height:2px;background:#111"></div>
+            </div>
+            <div class="cos" data-cos="italie">
+              <div style="position:absolute;left:11px;top:27px;width:13px;height:5px;border-radius:50% 20% 50% 50%;background:#3B2416;transform:rotate(14deg)"></div>
+              <div style="position:absolute;left:24px;top:27px;width:13px;height:5px;border-radius:20% 50% 50% 50%;background:#3B2416;transform:rotate(-14deg)"></div>
+              <div style="position:absolute;left:9px;top:-14px;width:30px;height:14px;border-radius:12px 12px 2px 2px;background:#fff;box-shadow:inset 0 -3px 0 #e6e6e6"></div>
+              <div style="position:absolute;left:11px;top:-1px;width:26px;height:4px;display:flex"><span style="flex:1;background:#009246"></span><span style="flex:1;background:#fff"></span><span style="flex:1;background:#CE2B37"></span></div>
+            </div>
+            <div class="cos" data-cos="cuir">
+              <div style="position:absolute;left:8px;top:-12px;width:32px;height:16px;border-radius:14px 14px 3px 3px;background:#151515"></div>
+              <div style="position:absolute;left:8px;top:1px;width:32px;height:4px;background:#C8102E;display:flex;justify-content:space-around;align-items:center"><span style="width:3px;height:3px;border-radius:50%;background:#d9d9de"></span><span style="width:3px;height:3px;border-radius:50%;background:#d9d9de"></span><span style="width:3px;height:3px;border-radius:50%;background:#d9d9de"></span></div>
+              <div style="position:absolute;left:12px;top:4px;width:28px;height:6px;border-radius:0 0 50% 50%;background:#0b0b0b"></div>
+            </div>
+            <div class="cos" data-cos="france">
+              <div style="position:absolute;left:22px;top:-13px;width:4px;height:6px;border-radius:2px;background:#1E2A5A"></div>
+              <div style="position:absolute;left:5px;top:-9px;width:38px;height:15px;border-radius:50%;background:#1E2A5A;transform:rotate(-10deg)"></div>
+            </div>
+            <div id="hat" style="position:absolute;left:0;top:0;width:48px;height:0;transform-origin:50% 0;display:block">
+              <div style="position:absolute;left:11px;top:-17px;width:26px;height:20px;border-radius:12px 12px 5px 5px;background:#8B5E4A"></div>
+              <div style="position:absolute;left:19px;top:-17px;width:10px;height:5px;border-radius:50%;background:#734A3A"></div>
+              <div style="position:absolute;left:11px;top:-1px;width:26px;height:4px;background:#5A3A2E"></div>
+              <div style="position:absolute;left:-9px;top:-4px;width:15px;height:9px;border-radius:50%;background:#7A5242;transform:rotate(-32deg)"></div>
+              <div style="position:absolute;left:42px;top:-4px;width:15px;height:9px;border-radius:50%;background:#7A5242;transform:rotate(32deg)"></div>
+              <div style="position:absolute;left:-3px;top:0px;width:54px;height:8px;border-radius:50%;background:#7A5242"></div>
+            </div>
+          </div>
+        </div>
+      </button>
+
+    <button id="aide-bouton" class="bouton-barre" title="Aide"><span class="ico">help</span></button>
+
+    <button id="fermer" title="Cacher le canard (il reste près de l'horloge)" style="position:absolute;top:-10px;right:-10px;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:#333336;color:#c9c9ce;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+      <span class="ico" style="font-size:16px">close</span>
+    </button>
+  </div>
+</div>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script src="costumes.js"></script>
+<script src="barre.js"></script>
+</body>
+</html>

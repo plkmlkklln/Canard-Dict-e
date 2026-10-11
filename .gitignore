@@ -1,0 +1,19 @@
+# Modèles de reconnaissance (≈ 2 Go) : téléchargés par build.bat
+modeles/
+
+# Fabrication
+build/
+dist/
+sortie/
+*.exe
+*.zip
+
+# Fichiers générés par outils/creer_icone.py
+outils/icone.ico
+outils/inst_*.png
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.bin

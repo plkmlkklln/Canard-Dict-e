@@ -1,0 +1,131 @@
+CANARD DICTÉE - MODE D'EMPLOI
+=============================
+
+INSTALLER (une seule fois)
+--------------------------
+1. Double-clique sur "Installer-CanardDictee.exe".
+2. Si Windows affiche un écran bleu "Windows a protégé votre ordinateur" :
+   clique sur "Informations complémentaires", puis "Exécuter quand même".
+3. Attends quelques secondes : les fichiers se copient.
+4. Le canard te dit bonjour. Clique sur "Commencer".
+5. Choisis tes options, puis "Suivant".
+6. Choisis ton micro. Clique sur "Tester le micro" et dis "coin".
+   La barre jaune doit bouger.
+7. Clique sur "Installer", puis sur "Terminer".
+
+Pas besoin d'Internet. Tout est déjà dans l'installateur.
+
+
+LE PLUS SIMPLE : WINDOWS + H
+----------------------------
+1. Clique dans une zone de texte.
+2. Appuie sur Windows + H (pas besoin de garder).
+3. Le canard dit "Coin !" et écoute.
+4. Parle.
+5. Arrête de parler : le texte s'écrit et le canard s'en va.
+   (Ou refais Windows + H pour finir plus vite.)
+
+
+AVEC CTRL DROIT
+---------------
+1. Clique dans une zone de texte.
+2. MAINTIENS la touche Ctrl de DROITE.
+3. Parle.
+4. RELÂCHE la touche : le texte s'écrit.
+
+Long texte : appuie UNE FOIS sur Ctrl droit (vite), parle,
+puis appuie encore une fois pour finir.
+
+Tu peux aussi cliquer sur le canard.
+
+Pas besoin de dire "virgule" ou "point".
+La ponctuation se met toute seule.
+
+
+ANNULER
+-------
+Appuie sur la touche Échap.
+
+
+LES COSTUMES DU CANARD
+----------------------
+Le canard se déguise selon les mots que tu dis. Quelques exemples :
+- "pizza", "pâtes"        : chef italien
+- "France"                : béret et baguette
+- "foot", "match"         : footballeur
+- "musique", "concert"    : casque audio
+- "pluie", "triste"       : petit nuage
+- "espace", "lune"        : astronaute
+- "Noël", "neige"         : bonnet de Noël
+- "anniversaire"          : chapeau de fête
+- "café", "fatigué"       : tasse de café
+- "malade", "fièvre"      : thermomètre
+- "pirate", "trésor"      : pirate
+- "ninja", "judo"         : ninja
+- "enquête", "police"     : détective
+- "argent", "salaire"     : canard millionnaire
+- "amour", "bisous"       : petits cœurs
+- "mème", "mdr"           : grenouille
+- "Halloween", "bonbons"  : citrouille
+- "fantôme", "hanté"      : fantôme
+- "sorcière", "potion"    : sorcière
+- "Lego", "brique"        : canard Lego
+- "Iron Man", "Marvel"    : armure
+- "Minecraft", "pixel"    : canard en cubes
+- "South Park", "dessin animé", "manga", "vampire",
+  "président", "robot", "LGBT", "furry"... : et d'autres surprises !
+Tu peux couper les costumes dans les paramètres.
+
+LE SKIN DU CANARD
+-----------------
+Dans les paramètres (la roue) : "Skin du canard".
+Clique sur une petite tête : le canard garde ce costume tout le temps.
+"Cowboy" = le canard de départ.
+
+LE CANARD S'ENDORT
+------------------
+Si tu ne bouges pas pendant 10 secondes, le canard bâille et s'endort.
+Bouge la souris ou parle : il se réveille.
+
+
+LA BARRE
+--------
+- Le canard au milieu : clique dessus pour parler.
+- La roue (à gauche) : les paramètres.
+- Le "?" (à droite) : l'aide.
+- La croix : cacher le canard.
+- Attrape le fond de la barre pour la déplacer.
+
+Canard caché ? Clique sur l'icône du canard près de l'horloge.
+
+
+LES PARAMÈTRES (la roue)
+------------------------
+- Lanceur de saisie vocale : le canard vient quand tu es dans une zone de texte.
+- Ponctuation automatique.
+- Filtrer le langage inadapté : cache les gros mots (p*****).
+- Sons de début et de fin.
+- Win + H ouvre cette dictée.
+- Cacher la barre quand c'est fini.
+- Costumes du canard.
+- Délai avant d'arrêter : quand le canard arrête d'écouter si tu te tais.
+- Choisir le microphone : le micro choisi a un point jaune.
+- Raccourci clavier : Ctrl droit, F8, F9...
+- Modèle : Rapide, Équilibré (conseillé) ou Précis.
+- Lancer au démarrage de Windows.
+- Quitter la dictée (le canard pleure un peu).
+
+
+ÇA NE MARCHE PAS ?
+------------------
+- Rien ne s'écrit dans un programme lancé "en administrateur" :
+  lance aussi Canard Dictée en administrateur (clic droit).
+- "Je n'ai rien entendu" : vérifie le micro dans les paramètres.
+- Ctrl droit + une autre touche (Ctrl+C...) ne lance pas la dictée. C'est normal.
+- Le journal des erreurs est ici :
+  %APPDATA%\DicteeVocale\journal.txt
+
+
+DÉSINSTALLER
+------------
+Paramètres Windows > Applications > Canard Dictée > Désinstaller.
